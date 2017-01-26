@@ -1,0 +1,164 @@
+
+start:
+  ldi   R1, 0
+  ldi   R0, 58
+  add   R1, R0      ; test add
+  cp    R1, R0
+  brne  1
+  nop
+  brvs  1           ; previous add should not overflow
+  nop
+  ldi   r1, 0x7f    ; set up overflow add
+  ldi   r0, 0x7f
+  add   r1, r0
+  brvc  1           ; branch if not set (i.e. overflow not detected)
+  nop
+  ldi   r0, 1
+  ldi   r1, 1
+  sub   R0, R1      ; check subtraction
+  brne  1
+  nop
+  sec               ; set carry flag to test adc
+  adc   r0, r0
+  cpi   r0, 1
+  brne  1
+  nop
+  subi  r0, 1       ; test subtraction by immediate
+  brne  1
+  nop
+  sec
+  subc  r0, r0      ; test subtraction with carry
+  cpi   r0, -1
+  brne  1
+  nop
+  sec               ; set carry to test subtraction by immediate with carry
+  sbci  r0, 1
+  cpi   r0, -3
+  brne  1
+  nop
+  ldi   r0, 0
+  ldi   r1, 0xff
+  and   r0, r1      ; test r1 & r0
+  brne  1
+  nop
+  ldi   r0, 0xff
+  and   r0, r1
+  cpi   r0, 0xff
+  brne  1
+  nop
+  andi  r0, 0x00    ; test and by immediate
+  brne  1
+  nop
+  ldi   r0, 0
+  ldi   r1, 0
+  or    r0, r1      ; test or
+  brne  1
+  nop
+  ldi   r1, 0x46
+  or    r0, r1      ; test or
+  cpi   r0, 0x46
+  brne  1
+  nop
+  ldi   r1, 0xff
+  or    r0, r1
+  cpi   r0, 0xff
+  brne  1
+  nop
+  ldi   r0, 0
+  ori   r0, 0x38    ; test or by immediate
+  cpi   r0, 0x38
+  brne  1
+  nop
+  eor   r0, r0      ; test exclusive or. r0 should be 0
+  brne  1
+  nop
+  com   r0          ; test one's complement
+  cpi   r0, 0xff
+  brne  1
+  nop
+  ldi   r0, 0x46
+  com   r0
+  cpi   r0, 0xB9
+  brne  1
+  nop
+  neg   r0          ; test two's complement
+  cpi   r0, 0x47
+  brne  1
+  nop
+  ldi   r0, 0
+  sbr   r0, 0       ; test set first bit of r0
+  cpi   r0, 0x01
+  brne  1
+  nop
+  sbr   r0, 7       ; test set last bit of r0
+  cpi   r0, 0x81
+  brne  1
+  nop
+  cbr   r0, 0       ; test clear last bit of r0
+  cpi   r0, 0x80
+  cbr   r0, 7       ; test clear first bit of r0
+  brne  1
+  nop
+  ldi   r0, 0
+  inc   r0          ; test increment
+  cpi   r0, 1
+  brne  1
+  nop
+  dec   r0          ; test decrement
+  brne  1
+  nop
+  tst   r0, r0      ; test tst
+  brne  1
+  nop
+  inc   r0
+  ldi   r1, 0x02
+  tst   r1, r0
+  brne  1
+  nop
+  clr   r0          ; test set r0 to 0x00
+  brne  1
+  nop
+  ser   r0          ; test set r0 to 0xff
+  cpi   r0, 0xff
+  brne
+  nop
+  ; Test data transfer instructions
+  ldi   r0, 0x23
+  sts   0x0021, r0  ; W 0x23 0x0021 test store and load direct
+  lds   r0, 0x0021  ; R 0x21 0x0021
+  ldi   r26, 0x43
+  ldi   r27, 0x02
+  sts   X, r0       ; W 0x23 0x0243 test store and load indirect
+  lds   r0, X       ; R 0x23 0x0243
+  ldi   r28, 0x43
+  ldi   r29, 0x02
+  sts   Y, r0       ; W 0x23 0x0243
+  lds   r0, Y       ; R 0x23 0x0243
+  ldi   r30, 0x43
+  ldi   r31, 0x02
+  sts   Z, r0       ; W 0x23 0x0243
+  lds   r0, Z       ; R 0x23 0x0243
+  ldi   r0, 0x29
+  std   Y+5, r0     ; W 0x29 0x0248 test store and load indirect with displacement
+  clr   r0
+  ldd   r0, Y+5     ; R 0x29 0x0248
+  st    Y+, r0      ; W 0x29 0x0243
+  st    Y+, r0      ; W 0x29 0x0244
+  ld    r0, -Y      ; R 0x29 0x0243
+  ldi   r1, 0x54
+  mov   r0, r1      ; test mov
+  cpi   r0, 0x54
+  brne  1
+  nop
+  ldi   r0, 0x32    ; test load immediate
+  cpi   r0, 0x32
+  ldi   r26, 0x5a   ; test move word (X = 0x865a)
+  ldi   r27, 0x86
+  movw  Y, X        ; Y = X = 0x8651
+  cpi   r28, 0x5a
+  brne  1
+  nop
+  cpi   r29, 0x86
+  brne  1
+  nop
+  nop
