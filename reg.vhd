@@ -48,8 +48,27 @@ entity  REG  is
         SelB     :  in  std_logic_vector(4 downto 0);
         RegA     :  out std_logic_vector(7 downto 0);       -- register bus A out
         RegB     :  out std_logic_vector(7 downto 0)        -- register bus B out
-        XReg     :  out std_logic(15 downto 0);
-        YReg     :  out std_logic(15 downto 0);
-        ZReg     :  out std_logic(15 downto 0)
+        XReg     :  out std_logic_vector(15 downto 0);
+        YReg     :  out std_logic_vector(15 downto 0);
+        ZReg     :  out std_logic_vector(15 downto 0)
     );
 end  REG;
+
+architecture REG_ARCH of REG is
+  type reg_array is array(31 downto 0) of std_logic_vector(7 downto 0);
+  signal regs  :  reg_array;
+begin
+  RegA <= regs(conv_integer(SelA));
+  RegB <= regs(conv_integer(SelB));
+  XReg <= regs(27) & regs(26);
+  YReg <= regs(29) & regs(28);
+  ZReg <= regs(31) & regs(30);
+  process(clock)
+    if (rising_edge(clock)) then
+      -- If write enable is '1', selection A gets the input bus.
+      if (En = '1') then
+        regs(conv_integer(SelA)) <= RegIn;
+      end if;
+    end if;
+  end process;
+end REG_ARCH;
