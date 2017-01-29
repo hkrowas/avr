@@ -28,15 +28,24 @@ use ieee.std_logic_1164.all;
 use ieee.std_logic_arith.all;
 use ieee.numeric_std.all;
 
-library opcodes;
-use opcodes.opcodes.all;
-
 
 entity  SR  is
     port(
         RegIn   :  in  std_logic_vector(7 downto 0);    -- DFF input
         Mask    :  in  std_logic_vector(7 downto 0);
         clock   :  in  std_logic;
-        RegOut  :  out std_logic_vector(7 downto 0)
+        RegOut  :  buffer std_logic_vector(7 downto 0)
     );
 end  SR;
+
+architecture SR_ARCH of SR is
+begin
+  process (clock)
+  begin
+    if (rising_edge(clock)) then
+      -- RegOut gets old value if bit it mask not set
+      -- RegOut gets Regin value if bit in mask is set
+      RegOut <= (RegOut and not(Mask)) or (RegIn and Mask);
+    end if;
+  end process;
+end SR_ARCH;
