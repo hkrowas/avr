@@ -33,6 +33,7 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.std_logic_arith.all;
+use ieee.std_logic_unsigned.all;
 use ieee.numeric_std.all;
 
 library opcodes;
@@ -47,7 +48,7 @@ entity  REG  is
         SelA     :  in  std_logic_vector(4 downto 0);
         SelB     :  in  std_logic_vector(4 downto 0);
         RegA     :  out std_logic_vector(7 downto 0);       -- register bus A out
-        RegB     :  out std_logic_vector(7 downto 0)        -- register bus B out
+        RegB     :  out std_logic_vector(7 downto 0);       -- register bus B out
         XReg     :  out std_logic_vector(15 downto 0);
         YReg     :  out std_logic_vector(15 downto 0);
         ZReg     :  out std_logic_vector(15 downto 0)
@@ -63,7 +64,8 @@ begin
   XReg <= regs(27) & regs(26);
   YReg <= regs(29) & regs(28);
   ZReg <= regs(31) & regs(30);
-  process(clock)
+  process (clock)
+  begin
     if (rising_edge(clock)) then
       -- If write enable is '1', selection A gets the input bus.
       if (En = '1') then
