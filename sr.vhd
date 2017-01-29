@@ -43,7 +43,7 @@ begin
   process (clock)
   begin
     if (rising_edge(clock)) then
-      -- RegOut gets old value if bit it mask not set
+      -- RegOut gets old value if bit in mask not set
       -- RegOut gets Regin value if bit in mask is set
       RegOut <= (RegOut and not(Mask)) or (RegIn and Mask);
     end if;
