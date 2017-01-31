@@ -69,7 +69,7 @@ architecture REG_TEST_ARCH of REG_TEST is
   component CUNIT
     port (
         IR       :  in  std_logic_vector(15 downto 0);
-        SR       :  in  std_logic_vector(15 downto 0);
+        SR       :  in  std_logic_vector(7 downto 0);
         clock    :  in  std_logic;
         Con      :  out std_logic_vector(7 downto 0);
         ConSel   :  out std_logic;
@@ -88,6 +88,8 @@ architecture REG_TEST_ARCH of REG_TEST is
   signal SelB : std_logic_vector(4 downto 0);
   signal En  :  std_logic;
 
+  signal END_SIM : BOOLEAN := FALSE;
+
 begin
   register_array : REG
     port map (
@@ -105,6 +107,7 @@ begin
       clock => clock,
       SelA => SelA,
       SelB => SelB,
-      En => En
+      En => En,
+      SR => x"00"
     );
 end REG_TEST_ARCH;

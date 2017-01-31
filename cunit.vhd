@@ -42,8 +42,8 @@ use opcodes.opcodes.all;
 
 entity  CUNIT  is
     port (
-        IR       :  in  std_logic_vector(15 downto 0);
-        SR       :  in  std_logic_vector(15 downto 0);
+        IR       :  in  opcode_word;
+        SR       :  in  std_logic_vector(7 downto 0);
         clock    :  in  std_logic;
         Con      :  out std_logic_vector(7 downto 0);
         ConSel   :  out std_logic;
@@ -74,34 +74,34 @@ architecture CUNIT_ARCH of CUNIT is
 begin
   SelB <= IR(9) & IR(3 downto 0);   -- SelB is this for all opcodes
 
-  process
+  process(IR, SR, clock)
   begin
     -- All opcodes
-    if (IR = OpADC) then
+    if (std_match(IR, OpADC)) then
       En <= '1';
       FlagMask <= Z or C or N or V or S or H;
     end if;
-    if (IR = OpADD) then
+    if (std_match(IR, OpADD)) then
       En <= '1';
       FlagMask <= Z or C or N or V or S or H;
     end if;
-    if (IR = OpADIW) then
+    if (std_match(IR, OpADIW)) then
       En <= '1';
       FlagMask <= Z or C or N or V or S;
     end if;
-    if (IR = OpAND) then
+    if (std_match(IR, OpAND)) then
       En <= '1';
       FlagMask <= Z or N or V or S;
     end if;
-    if (IR = OpANDI) then
+    if (std_match(IR, OpANDI)) then
       En <= '1';
       FlagMask <= Z or N or V or S;
     end if;
-    if (IR = OpASR) then
+    if (std_match(IR, OpASR)) then
       En <= '1';
       FlagMask <= Z or C or N or V or S;
     end if;
-    if (IR = OpBCLR) then
+    if (std_match(IR, OpBCLR)) then
       En <= '0';
       for i in 7 downto 0 loop
         if (i = conv_integer(IR(6 downto 4))) then
@@ -111,11 +111,11 @@ begin
         end if;
       end loop;
     end if;
-    if (IR = OpBLD) then
+    if (std_match(IR, OpBLD)) then
       En <= '1';
       FlagMask <= x"00";
     end if;
-    if (IR = OpBSET) then
+    if (std_match(IR, OpBSET)) then
       En <= '0';
       for i in 7 downto 0 loop
         if (i = conv_integer(IR(6 downto 4))) then
@@ -125,89 +125,89 @@ begin
         end if;
       end loop;
     end if;
-    if (IR = OpBST) then
+    if (std_match(IR, OpBST)) then
       En <= '0';
       FlagMask <= T;
     end if;
-    if (IR = OpCOM) then
+    if (std_match(IR, OpCOM)) then
       En <= '1';
       FlagMask <= Z or C or N or V or S;
     end if;
-    if (IR = OpCP) then
+    if (std_match(IR, OpCP)) then
       En <= '0';
       FlagMask <= Z or C or N or V or S or H;
     end if;
-    if (IR = OpCPC) then
+    if (std_match(IR, OpCPC)) then
       En <= '0';
       FlagMask <= Z or C or N or V or S or H;
     end if;
-    if (IR = OpCPI) then
+    if (std_match(IR, OpCPI)) then
       En <= '0';
       FlagMask <= Z or C or N or V or S or H;
     end if;
-    if (IR = OpDEC) then
+    if (std_match(IR, OpDEC)) then
       En <= '1';
       FlagMask <= Z or N or V or S;
     end if;
-    if (IR = OpEOR) then
+    if (std_match(IR, OpEOR)) then
       En <= '1';
       FlagMask <= Z or N or V or S;
     end if;
-    if (IR = OpINC) then
+    if (std_match(IR, OpINC)) then
       En <= '1';
       FlagMask <= Z or N or V or S;
     end if;
-    if (IR = OpLSR) then
+    if (std_match(IR, OpLSR)) then
       En <= '1';
       FlagMask <= Z or C or N or V or S;
     end if;
-    if (IR = OpMUL) then
+    if (std_match(IR, OpMUL)) then
       En <= '1';
       FlagMask <= C;
     end if;
-    if (IR = OpNEG) then
+    if (std_match(IR, OpNEG)) then
       En <= '1';
       FlagMask <= Z or C or N or V or S or H;
     end if;
-    if (IR = OpOR) then
+    if (std_match(IR, OpOR)) then
       En <= '1';
       FlagMask <= Z or N or V or S;
     end if;
-    if (IR = OpORI) then
+    if (std_match(IR, OpORI)) then
       En <= '1';
       FlagMask <= Z or N or V or S;
     end if;
-    if (IR = OpROR) then
+    if (std_match(IR, OpROR)) then
       En <= '1';
       FlagMask <= Z or C or N or V or S;
     end if;
-    if (IR = OpSBC) then
+    if (std_match(IR, OpSBC)) then
       En <= '1';
       FlagMask <= Z or C or N or V or S or H;
     end if;
-    if (IR = OpSBCI) then
+    if (std_match(IR, OpSBCI)) then
       En <= '1';
       FlagMask <= Z or C or N or V or S or H;
     end if;
-    if (IR = OpSBIW) then
+    if (std_match(IR, OpSBIW)) then
       En <= '1';
       FlagMask <= Z or C or N or V or S;
     end if;
-    if (IR = OpSUB) then
+    if (std_match(IR, OpSUB)) then
       En <= '1';
       FlagMask <= Z or C or N or V or S or H;
     end if;
-    if (IR = OpSUBI) then
+    if (std_match(IR, OpSUBI)) then
       En <= '1';
       FlagMask <= Z or C or N or V or S or H;
     end if;
-    if (IR = OpSWAP) then
+    if (std_match(IR, OpSWAP)) then
       En <= '1';
       FlagMask <= x"00";
     end if;
 
     -- This section controls the value of SelA and Con based on the opcode
-    if (IR = OpSBIW or IR = OpADIW) then
+    if (std_match(IR, OpSBIW) or std_match(IR, OpADIW)) then
       ConSel <= '1';
       if (count = '0') then
         Con <= "00" & IR(7 downto 6) & IR(3 downto 0);
@@ -218,13 +218,14 @@ begin
       end if;
     end if;
     -- If an immediate instruction
-    if (IR = OpANDI or IR = OpCPI or IR = OpORI or IR = OpSBCI or IR = OpSUBI) then
+    if (std_match(IR, OpANDI) or std_match(IR, OpCPI) or std_match(IR, OpORI)
+      or std_match(IR, OpSBCI) or std_match(IR, OpSUBI)) then
       ConSel <= '1';
       SelA <= "1" & IR(7 downto 4);
       Con <= IR(11 downto 8) & IR(3 downto 0);
     end if;
-    if (not(IR = OpANDI or IR = OpCPI or IR = OpORI or IR = OpSBCI
-      or IR = OpSUBI or IR = OpSBIW or IR = OpADIW)) then
+    if (not(std_match(IR, OpANDI) or std_match(IR, OpCPI) or std_match(IR, OpORI)
+      or std_match(IR, OpSBCI) or std_match(IR, OpSUBI))) then
       ConSel <= '0';
       Con <= IR(11 downto 8) & IR(3 downto 0);
       SelA <= IR(8 downto 4);
@@ -234,7 +235,7 @@ begin
   process (clock)
   begin
     if(rising_edge(clock)) then
-      if (IR = OpSBIW or IR = OpADIW) then
+      if (std_match(IR, OpSBIW) or std_match(IR, OpADIW)) then
         count <= '1';
       else
         count <= '0';
