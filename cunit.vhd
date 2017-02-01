@@ -74,7 +74,7 @@ architecture CUNIT_ARCH of CUNIT is
 begin
   SelB <= IR(9) & IR(3 downto 0);   -- SelB is this for all opcodes
 
-  process(IR, SR, clock)
+  process(IR, SR, clock, count)
   begin
     -- All opcodes
     if (std_match(IR, OpADC)) then
@@ -225,7 +225,8 @@ begin
       Con <= IR(11 downto 8) & IR(3 downto 0);
     end if;
     if (not(std_match(IR, OpANDI) or std_match(IR, OpCPI) or std_match(IR, OpORI)
-      or std_match(IR, OpSBCI) or std_match(IR, OpSUBI))) then
+      or std_match(IR, OpSBCI) or std_match(IR, OpSUBI) or std_match(IR, OpSBIW)
+      or std_match(IR, OpADIW))) then
       ConSel <= '0';
       Con <= IR(11 downto 8) & IR(3 downto 0);
       SelA <= IR(8 downto 4);
@@ -236,7 +237,7 @@ begin
   begin
     if(rising_edge(clock)) then
       if (std_match(IR, OpSBIW) or std_match(IR, OpADIW)) then
-        count <= '1';
+        count <= not(count);
       else
         count <= '0';
       end if;

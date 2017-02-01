@@ -51,6 +51,7 @@ begin
     );
   process
   begin
+    wait for 15 ns;
     -- Access R0 and R0
     IR <= opADC(15 downto 10) & "0000000000";
     RegIn <= x"BF";
@@ -91,6 +92,24 @@ begin
     wait for 40 ns;
     assert(std_match(RegBOut, x"BB"));
     assert(std_match(RegAOut, x"CD"));
+    -- Setup R24 and R25 for word addressing
+    IR <= opADC(15 downto 10) & "0110000000";
+    RegIn <= x"EF";
+    wait for 40 ns;
+    --assert(std_match(RegAOut, x"BF"));
+    IR <= opADC(15 downto 10) & "0110010000";
+    RegIn <= x"BE";
+    wait for 40 ns;
+    IR <= opADC(15 downto 10) & "0110010000";
+    RegIn <= x"BE";
+    wait for 40 ns;
+    assert(std_match(RegAOut, x"BE"));
+    IR <= opADIW(15 downto 8) & "00000000";
+    RegIn <= x"EF";
+    wait for 5 ns;
+    assert(std_match(RegAOut, x"EF"));
+    wait for 15 ns;
+    assert(std_match(RegAOut, x"BE"));
 
     END_SIM <= TRUE;
     wait;
