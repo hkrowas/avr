@@ -56,27 +56,26 @@ begin
     IR <= opADC(15 downto 10) & "0000000000";
     RegIn <= x"BF";
     wait for 40 ns;
-    assert(std_match(RegAOut, x"BF"));
+    assert(std_match(RegAOut, x"BF"));    -- See if value was written.
     -- try non-writing operation on R0
     IR <= opCP(15 downto 10) & "0000000000";
     RegIn <= x"37";
     wait for 40 ns;
-    assert(std_match(RegAOut, x"BF"));
+    assert(std_match(RegAOut, x"BF"));    -- See if value is still the same.
     -- See if we can still write to R0
     IR <= opADC(15 downto 10) & "0000000000";
     RegIn <= x"CD";
     wait for 40 ns;
-    assert(std_match(RegAOut, x"CD"));
+    assert(std_match(RegAOut, x"CD"));   -- Test new value.
     -- Write something to R1
-    -- Access R0 and R0
     IR <= opADC(15 downto 10) & "0000010000";
     RegIn <= x"EE";
     wait for 40 ns;
-    assert(std_match(RegAOut, x"EE"));
+    assert(std_match(RegAOut, x"EE"));    -- Test if value was taken by R1
     IR <= opADC(15 downto 10) & "0000000000";
     RegIn <= x"CD";
     wait for 40 ns;
-    assert(std_match(RegAOut, x"CD"));
+    assert(std_match(RegAOut, x"CD"))     -- Test if value was taken by R0
     -- Test immediate operand addressing
     IR <= opSUBI(15 downto 12) & "000000000000";
     RegIn <= x"BB";
@@ -84,19 +83,18 @@ begin
     assert(std_match(RegAOut, x"BB"));
     IR <= opCP(15 downto 10) & "0100000000";
     RegIn <= x"37";
-    wait for 40 ns;
-    assert(std_match(RegAOut, x"BB"));
-    -- Test B select
+    wait for 40 ns;                     -- See if correct register was written to
+    assert(std_match(RegAOut, x"BB"));  --note that imm instructions are limited
+    -- Test B select                      to R16-R31.
     IR <= opCP(15 downto 10) & "1000000000";
     RegIn <= x"37";
     wait for 40 ns;
-    assert(std_match(RegBOut, x"BB"));
+    assert(std_match(RegBOut, x"BB"));    -- See if B is selected properly
     assert(std_match(RegAOut, x"CD"));
     -- Setup R24 and R25 for word addressing
     IR <= opADC(15 downto 10) & "0110000000";
     RegIn <= x"EF";
     wait for 40 ns;
-    --assert(std_match(RegAOut, x"BF"));
     IR <= opADC(15 downto 10) & "0110010000";
     RegIn <= x"BE";
     wait for 40 ns;

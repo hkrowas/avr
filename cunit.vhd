@@ -21,6 +21,7 @@
 --
 --  Outputs:
 --    Con  - constant operand
+--    ConSel - Selects whether to use a constant as the second ALU operand
 --    ALUOp - Operation code sent to ALU (maybe some substring of instruction opcode)
 --    En  -  Register array write enable
 --    SelA  -  Register A select (to ALU)
@@ -28,7 +29,7 @@
 --    ISelect  -  Instruction access unit source select
 --    DBaseSelect  -  Data access unit base select
 --    BOffSelect   -  Data access unit offset select
---    FlagMask  -  SR mask
+--    FlagMask  -  SR mask. Set bits indicate that flag changes with instruction.
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -76,7 +77,8 @@ begin
 
   process(IR, SR, clock, count)
   begin
-    -- All opcodes
+    -- All opcodes. This section controls En and the flag mask, which are both
+    -- specific to the instruction.
     if (std_match(IR, OpADC)) then
       En <= '1';
       FlagMask <= Z or C or N or V or S or H;
@@ -103,6 +105,7 @@ begin
     end if;
     if (std_match(IR, OpBCLR)) then
       En <= '0';
+      -- This for loop calculates the flag mask based on the instruction
       for i in 7 downto 0 loop
         if (i = conv_integer(IR(6 downto 4))) then
           FlagMask(i) <= '1';
@@ -117,6 +120,7 @@ begin
     end if;
     if (std_match(IR, OpBSET)) then
       En <= '0';
+      -- This for loop calculates the flag mask based on the instruction
       for i in 7 downto 0 loop
         if (i = conv_integer(IR(6 downto 4))) then
           FlagMask(i) <= '1';
@@ -207,6 +211,8 @@ begin
     end if;
 
     -- This section controls the value of SelA and Con based on the opcode
+
+    -- If word instruction
     if (std_match(IR, OpSBIW) or std_match(IR, OpADIW)) then
       ConSel <= '1';
       if (count = '0') then
@@ -217,6 +223,7 @@ begin
         SelA <= "11" & IR(5 downto 4) & "1";
       end if;
     end if;
+
     -- If an immediate instruction
     if (std_match(IR, OpANDI) or std_match(IR, OpCPI) or std_match(IR, OpORI)
       or std_match(IR, OpSBCI) or std_match(IR, OpSUBI)) then
@@ -224,6 +231,8 @@ begin
       SelA <= "1" & IR(7 downto 4);
       Con <= IR(11 downto 8) & IR(3 downto 0);
     end if;
+
+    -- If not immediate or word.
     if (not(std_match(IR, OpANDI) or std_match(IR, OpCPI) or std_match(IR, OpORI)
       or std_match(IR, OpSBCI) or std_match(IR, OpSUBI) or std_match(IR, OpSBIW)
       or std_match(IR, OpADIW))) then
@@ -233,9 +242,11 @@ begin
     end if;
   end process;
 
+  -- This process controls the finite state machine for instruction decoding.
   process (clock)
   begin
     if(rising_edge(clock)) then
+      -- Counter used for multiclock instructions
       if (std_match(IR, OpSBIW) or std_match(IR, OpADIW)) then
         count <= not(count);
       else

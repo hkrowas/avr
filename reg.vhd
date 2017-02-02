@@ -24,11 +24,11 @@
 --    SelB  -  RegB select
 --
 --  Outputs:
+--    RegA  - register bus A output (8 bits)
+--    RegB  - register bus B output (8 bits)
 --    XReg  -  X register (R27:R26)
 --    YReg  -  Y register (R29:R28)
 --    ZReg  -  Z register (R31:R30)
---    RegA  - register bus A output (8 bits)
---    RegB  - register bus B output (8 bits)
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -59,17 +59,17 @@ architecture REG_ARCH of REG is
   type reg_array is array(31 downto 0) of std_logic_vector(7 downto 0);
   signal regs  :  reg_array;
 begin
-  RegA <= regs(conv_integer(SelA));
+  RegA <= regs(conv_integer(SelA));     -- Muxes for RegA and RegB
   RegB <= regs(conv_integer(SelB));
-  XReg <= regs(27) & regs(26);
-  YReg <= regs(29) & regs(28);
+  XReg <= regs(27) & regs(26);   -- X, Y, and Z registers are concatenations of
+  YReg <= regs(29) & regs(28);   -- two registers. They go to the addressing units.
   ZReg <= regs(31) & regs(30);
   process (clock)
   begin
     if (rising_edge(clock)) then
       -- If write enable is '1', selection A gets the input bus.
       if (En = '1') then
-        regs(conv_integer(SelA)) <= RegIn;
+        regs(conv_integer(SelA)) <= RegIn;   -- Register written to is always A
       end if;
     end if;
   end process;
