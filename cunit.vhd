@@ -137,45 +137,60 @@ architecture CUNIT_ARCH of CUNIT is
   signal count  :  std_logic;       -- counter for 2 clock instructions
 
 begin
-  SelB <= IR(9) & IR(3 downto 0);   -- SelB is this for all opcodes
+  --SelB <= IR(9) & IR(3 downto 0);   -- SelB is this for all opcodes
 
   process(IR, SR, clock, count)
   begin
     -- All opcodes. This section controls En and the flag mask, which are both
     -- specific to the instruction.
+    En <= 'X';
+    ALUOp <= "XXXXXX";
+    SelA <= "XXXXX";
+    SelB <= "XXXXX";
+    FlagMask <= "XXXXXXXX";
+    Count <= 'X';
+    Con <= "XXXXXXXX";
+    ConSel <= 'X';
     if (std_match(IR, OpADC)) then
       En <= '1';
       ALUOp <= ALU_ADC;
+      SelB <= IR(9) & IR(3 downto 0);
       FlagMask <= Z or C or N or V or S or H;
     end if;
     if (std_match(IR, OpADD)) then
       En <= '1';
       ALUOp <= ALU_ADD;
+      SelB <= IR(9) & IR(3 downto 0);
       FlagMask <= Z or C or N or V or S or H;
     end if;
     if (std_match(IR, OpADIW)) then
       En <= '1';
       ALUOp <= ALU_ADIW;
+      SelB <= IR(9) & IR(3 downto 0);
       FlagMask <= Z or C or N or V or S;
     end if;
     if (std_match(IR, OpAND)) then
       En <= '1';
       ALUOp <= ALU_AND;
+      SelB <= IR(9) & IR(3 downto 0);
       FlagMask <= Z or N or V or S;
     end if;
     if (std_match(IR, OpANDI)) then
       En <= '1';
       ALUOp <= ALU_ANDI;
+      SelB <= IR(9) & IR(3 downto 0);
       FlagMask <= Z or N or V or S;
     end if;
     if (std_match(IR, OpASR)) then
       En <= '1';
       ALUOp <= ALU_ASR;
+      SelB <= IR(8 downto 4);
       FlagMask <= Z or C or N or V or S;
     end if;
     if (std_match(IR, OpBCLR)) then
       En <= '0';
       ALUOp <= ALU_BCLR;
+      SelB <= IR(9) & IR(3 downto 0);
       -- This for loop calculates the flag mask based on the instruction
       for i in 7 downto 0 loop
         if (i = conv_integer(IR(6 downto 4))) then
@@ -188,11 +203,13 @@ begin
     if (std_match(IR, OpBLD)) then
       En <= '1';
       ALUOp <= ALU_BLD;
+      SelB <= IR(9) & IR(3 downto 0);
       FlagMask <= x"00";
     end if;
     if (std_match(IR, OpBSET)) then
       En <= '0';
       ALUOp <= ALU_BSET;
+      SelB <= IR(9) & IR(3 downto 0);
       -- This for loop calculates the flag mask based on the instruction
       for i in 7 downto 0 loop
         if (i = conv_integer(IR(6 downto 4))) then
@@ -205,101 +222,121 @@ begin
     if (std_match(IR, OpBST)) then
       En <= '0';
       ALUOp <= ALU_BST;
+      SelB <= IR(9) & IR(3 downto 0);
       FlagMask <= T;
     end if;
     if (std_match(IR, OpCOM)) then
       En <= '1';
       ALUOp <= ALU_COM;
+      SelB <= IR(8 downto 4);
       FlagMask <= Z or C or N or V or S;
     end if;
     if (std_match(IR, OpCP)) then
       En <= '0';
       ALUOp <= ALU_CP;
+      SelB <= IR(9) & IR(3 downto 0);
       FlagMask <= Z or C or N or V or S or H;
     end if;
     if (std_match(IR, OpCPC)) then
       En <= '0';
       ALUOp <= ALU_CPC;
+      SelB <= IR(9) & IR(3 downto 0);
       FlagMask <= Z or C or N or V or S or H;
     end if;
     if (std_match(IR, OpCPI)) then
       En <= '0';
       ALUOp <= ALU_CPI;
+      SelB <= IR(9) & IR(3 downto 0);
       FlagMask <= Z or C or N or V or S or H;
     end if;
     if (std_match(IR, OpDEC)) then
       En <= '1';
       ALUOp <= ALU_DEC;
+      SelB <= IR(8 downto 4);
       FlagMask <= Z or N or V or S;
     end if;
     if (std_match(IR, OpEOR)) then
       En <= '1';
       ALUOp <= ALU_EOR;
+      SelB <= IR(9) & IR(3 downto 0);
       FlagMask <= Z or N or V or S;
     end if;
     if (std_match(IR, OpINC)) then
       En <= '1';
       ALUOp <= ALU_INC;
+      SelB <= IR(8 downto 4);
       FlagMask <= Z or N or V or S;
     end if;
     if (std_match(IR, OpLSR)) then
       En <= '1';
       ALUOp <= ALU_LSR;
+      SelB <= IR(8 downto 4);
       FlagMask <= Z or C or N or V or S;
     end if;
     if (std_match(IR, OpMUL)) then
       En <= '1';
       --ALUOp <= ALU_MUL;
       FlagMask <= C;
+      SelB <= IR(9) & IR(3 downto 0);
     end if;
     if (std_match(IR, OpNEG)) then
       En <= '1';
       ALUOp <= ALU_NEG;
+      SelB <= IR(8 downto 4);
       FlagMask <= Z or C or N or V or S or H;
     end if;
     if (std_match(IR, OpOR)) then
       En <= '1';
       ALUOp <= ALU_OR;
+      SelB <= IR(9) & IR(3 downto 0);
       FlagMask <= Z or N or V or S;
     end if;
     if (std_match(IR, OpORI)) then
       En <= '1';
       ALUOp <= ALU_ORI;
+      SelB <= IR(9) & IR(3 downto 0);
       FlagMask <= Z or N or V or S;
     end if;
     if (std_match(IR, OpROR)) then
       En <= '1';
       ALUOp <= ALU_ROR;
+      SelB <= IR(8 downto 4);
       FlagMask <= Z or C or N or V or S;
     end if;
     if (std_match(IR, OpSBC)) then
       En <= '1';
       ALUOp <= ALU_SBC;
+      SelB <= IR(9) & IR(3 downto 0);
       FlagMask <= Z or C or N or V or S or H;
     end if;
     if (std_match(IR, OpSBCI)) then
       En <= '1';
       ALUOp <= ALU_SBCI;
+      SelB <= IR(9) & IR(3 downto 0);
       FlagMask <= Z or C or N or V or S or H;
     end if;
     if (std_match(IR, OpSBIW)) then
       En <= '1';
       ALUOp <= ALU_SBIW;
+      SelB <= IR(9) & IR(3 downto 0);
       FlagMask <= Z or C or N or V or S;
     end if;
     if (std_match(IR, OpSUB)) then
       En <= '1';
       ALUOp <= ALU_SUB;
+      SelB <= IR(9) & IR(3 downto 0);
       FlagMask <= Z or C or N or V or S or H;
     end if;
     if (std_match(IR, OpSUBI)) then
       En <= '1';
       ALUOp <= ALU_SUBI;
+      SelB <= IR(9) & IR(3 downto 0);
       FlagMask <= Z or C or N or V or S or H;
     end if;
     if (std_match(IR, OpSWAP)) then
       En <= '1';
       ALUOp <= ALU_SWAP;
+      SelB <= IR(8 downto 4);
       FlagMask <= x"00";
     end if;
 
