@@ -5,7 +5,8 @@
 --  This is the entity declaration for the Atmel AVR control unit.
 --
 --  Revision History:
---     2016-01-24     Initial Revision    Harrison Krowas
+--     2016-01-24     Initial Revision       Harrison Krowas
+--     2016-02-02     Added ALUOp decoding   Harrison Krowas
 --
 ----------------------------------------------------------------------------
 --
@@ -30,6 +31,39 @@
 --    DBaseSelect  -  Data access unit base select
 --    BOffSelect   -  Data access unit offset select
 --    FlagMask  -  SR mask. Set bits indicate that flag changes with instruction.
+--    ALUOp - Operation sent to ALU
+--            "----00"   F-Block select
+--            "----01"   Add/Sub select
+--            "----10"   Shifter select
+--            "----11"   Misc select
+--            F-Block
+--              "000000"   0
+--              "000100"   A nor B
+--              "001100"   not A
+--              "010100"   not B
+--              "011000"   A xor B
+--              "011100"   A nand B
+--              "100000"   A and B
+--              "100100"   A xnor B
+--              "111000"   A or B
+--              "111100"   1
+--            Add/Sub
+--              "--0001"   add
+--              "--0101"   subtract
+--              "--1001"   add with carry
+--              "--1101"   subtract with carry
+--            Shifter
+--              "010010"   LSR
+--              "000110"   ASR
+--              "001010"   ROR
+--              "100010"   RRC
+--            Misc
+--              "000011"   BST
+--              "000111"   SWAP
+--              "001011"   BLD
+--              "010011"   BSET
+--              "100011"   BCLR
+
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -70,41 +104,93 @@ architecture CUNIT_ARCH of CUNIT is
   constant Z  :  std_logic_vector(7 downto 0) := x"02";
   constant C  :  std_logic_vector(7 downto 0) := x"01";
 
+  -- ALUOp  Constants
+  constant ALU_ADC   :  std_logic_vector(5 downto 0) := "001001";
+  constant ALU_ADD   :  std_logic_vector(5 downto 0) := "000001";
+  constant ALU_ADIW  :  std_logic_vector(5 downto 0) := ALU_ADD;
+  constant ALU_AND   :  std_logic_vector(5 downto 0) := "100000";
+  constant ALU_ANDI  :  std_logic_vector(5 downto 0) := ALU_AND;
+  constant ALU_ASR   :  std_logic_vector(5 downto 0) := "000110";
+  constant ALU_BCLR  :  std_logic_vector(5 downto 0) := "100011";
+  constant ALU_BLD   :  std_logic_vector(5 downto 0) := "001011";
+  constant ALU_BSET  :  std_logic_vector(5 downto 0) := "010011";
+  constant ALU_BST   :  std_logic_vector(5 downto 0) := "000011";
+  constant ALU_COM   :  std_logic_vector(5 downto 0) := "001100";
+  constant ALU_CP    :  std_logic_vector(5 downto 0) := "000101";
+  constant ALU_CPC   :  std_logic_vector(5 downto 0) := "001101";
+  constant ALU_CPI   :  std_logic_vector(5 downto 0) := ALU_CP;
+  constant ALU_SUB   :  std_logic_vector(5 downto 0) := "000101";
+  constant ALU_DEC   :  std_logic_vector(5 downto 0) := ALU_SUB;
+  constant ALU_EOR   :  std_logic_vector(5 downto 0) := "011000";
+  constant ALU_INC   :  std_logic_vector(5 downto 0) := "000001";
+  constant ALU_LSR   :  std_logic_vector(5 downto 0) := "100010";
+  constant ALU_NEG   :  std_logic_vector(5 downto 0) := "000101";
+  constant ALU_OR    :  std_logic_vector(5 downto 0) := "111000";
+  constant ALU_ORI   :  std_logic_vector(5 downto 0) := ALU_OR;
+  constant ALU_ROR   :  std_logic_vector(5 downto 0) := "001010";
+  constant ALU_SBC   :  std_logic_vector(5 downto 0) := "001101";
+  constant ALU_SBCI  :  std_logic_vector(5 downto 0) := ALU_SBC;
+  constant ALU_SBIW  :  std_logic_vector(5 downto 0) := ALU_SUB;
+  constant ALU_SUBI  :  std_logic_vector(5 downto 0) := ALU_SUB;
+  constant ALU_SWAP  :  std_logic_vector(5 downto 0) := "000111";
+
   signal count  :  std_logic;       -- counter for 2 clock instructions
 
 begin
-  SelB <= IR(9) & IR(3 downto 0);   -- SelB is this for all opcodes
+  --SelB <= IR(9) & IR(3 downto 0);   -- SelB is this for all opcodes
 
   process(IR, SR, clock, count)
   begin
     -- All opcodes. This section controls En and the flag mask, which are both
     -- specific to the instruction.
+    En <= 'X';
+    ALUOp <= "XXXXXX";
+    SelA <= "XXXXX";
+    SelB <= "XXXXX";
+    FlagMask <= "XXXXXXXX";
+    Count <= 'X';
+    Con <= "XXXXXXXX";
+    ConSel <= 'X';
     if (std_match(IR, OpADC)) then
       En <= '1';
+      ALUOp <= ALU_ADC;
+      SelB <= IR(9) & IR(3 downto 0);
       FlagMask <= Z or C or N or V or S or H;
     end if;
     if (std_match(IR, OpADD)) then
       En <= '1';
+      ALUOp <= ALU_ADD;
+      SelB <= IR(9) & IR(3 downto 0);
       FlagMask <= Z or C or N or V or S or H;
     end if;
     if (std_match(IR, OpADIW)) then
       En <= '1';
+      ALUOp <= ALU_ADIW;
+      SelB <= IR(9) & IR(3 downto 0);
       FlagMask <= Z or C or N or V or S;
     end if;
     if (std_match(IR, OpAND)) then
       En <= '1';
+      ALUOp <= ALU_AND;
+      SelB <= IR(9) & IR(3 downto 0);
       FlagMask <= Z or N or V or S;
     end if;
     if (std_match(IR, OpANDI)) then
       En <= '1';
+      ALUOp <= ALU_ANDI;
+      SelB <= IR(9) & IR(3 downto 0);
       FlagMask <= Z or N or V or S;
     end if;
     if (std_match(IR, OpASR)) then
       En <= '1';
+      ALUOp <= ALU_ASR;
+      SelB <= IR(8 downto 4);
       FlagMask <= Z or C or N or V or S;
     end if;
     if (std_match(IR, OpBCLR)) then
       En <= '0';
+      ALUOp <= ALU_BCLR;
+      SelB <= IR(9) & IR(3 downto 0);
       -- This for loop calculates the flag mask based on the instruction
       for i in 7 downto 0 loop
         if (i = conv_integer(IR(6 downto 4))) then
@@ -116,10 +202,14 @@ begin
     end if;
     if (std_match(IR, OpBLD)) then
       En <= '1';
+      ALUOp <= ALU_BLD;
+      SelB <= IR(9) & IR(3 downto 0);
       FlagMask <= x"00";
     end if;
     if (std_match(IR, OpBSET)) then
       En <= '0';
+      ALUOp <= ALU_BSET;
+      SelB <= IR(9) & IR(3 downto 0);
       -- This for loop calculates the flag mask based on the instruction
       for i in 7 downto 0 loop
         if (i = conv_integer(IR(6 downto 4))) then
@@ -131,82 +221,122 @@ begin
     end if;
     if (std_match(IR, OpBST)) then
       En <= '0';
+      ALUOp <= ALU_BST;
+      SelB <= IR(9) & IR(3 downto 0);
       FlagMask <= T;
     end if;
     if (std_match(IR, OpCOM)) then
       En <= '1';
+      ALUOp <= ALU_COM;
+      SelB <= IR(8 downto 4);
       FlagMask <= Z or C or N or V or S;
     end if;
     if (std_match(IR, OpCP)) then
       En <= '0';
+      ALUOp <= ALU_CP;
+      SelB <= IR(9) & IR(3 downto 0);
       FlagMask <= Z or C or N or V or S or H;
     end if;
     if (std_match(IR, OpCPC)) then
       En <= '0';
+      ALUOp <= ALU_CPC;
+      SelB <= IR(9) & IR(3 downto 0);
       FlagMask <= Z or C or N or V or S or H;
     end if;
     if (std_match(IR, OpCPI)) then
       En <= '0';
+      ALUOp <= ALU_CPI;
+      SelB <= IR(9) & IR(3 downto 0);
       FlagMask <= Z or C or N or V or S or H;
     end if;
     if (std_match(IR, OpDEC)) then
       En <= '1';
+      ALUOp <= ALU_DEC;
+      SelB <= IR(8 downto 4);
       FlagMask <= Z or N or V or S;
     end if;
     if (std_match(IR, OpEOR)) then
       En <= '1';
+      ALUOp <= ALU_EOR;
+      SelB <= IR(9) & IR(3 downto 0);
       FlagMask <= Z or N or V or S;
     end if;
     if (std_match(IR, OpINC)) then
       En <= '1';
+      ALUOp <= ALU_INC;
+      SelB <= IR(8 downto 4);
       FlagMask <= Z or N or V or S;
     end if;
     if (std_match(IR, OpLSR)) then
       En <= '1';
+      ALUOp <= ALU_LSR;
+      SelB <= IR(8 downto 4);
       FlagMask <= Z or C or N or V or S;
     end if;
     if (std_match(IR, OpMUL)) then
       En <= '1';
+      --ALUOp <= ALU_MUL;
       FlagMask <= C;
+      SelB <= IR(9) & IR(3 downto 0);
     end if;
     if (std_match(IR, OpNEG)) then
       En <= '1';
+      ALUOp <= ALU_NEG;
+      SelB <= IR(8 downto 4);
       FlagMask <= Z or C or N or V or S or H;
     end if;
     if (std_match(IR, OpOR)) then
       En <= '1';
+      ALUOp <= ALU_OR;
+      SelB <= IR(9) & IR(3 downto 0);
       FlagMask <= Z or N or V or S;
     end if;
     if (std_match(IR, OpORI)) then
       En <= '1';
+      ALUOp <= ALU_ORI;
+      SelB <= IR(9) & IR(3 downto 0);
       FlagMask <= Z or N or V or S;
     end if;
     if (std_match(IR, OpROR)) then
       En <= '1';
+      ALUOp <= ALU_ROR;
+      SelB <= IR(8 downto 4);
       FlagMask <= Z or C or N or V or S;
     end if;
     if (std_match(IR, OpSBC)) then
       En <= '1';
+      ALUOp <= ALU_SBC;
+      SelB <= IR(9) & IR(3 downto 0);
       FlagMask <= Z or C or N or V or S or H;
     end if;
     if (std_match(IR, OpSBCI)) then
       En <= '1';
+      ALUOp <= ALU_SBCI;
+      SelB <= IR(9) & IR(3 downto 0);
       FlagMask <= Z or C or N or V or S or H;
     end if;
     if (std_match(IR, OpSBIW)) then
       En <= '1';
+      ALUOp <= ALU_SBIW;
+      SelB <= IR(9) & IR(3 downto 0);
       FlagMask <= Z or C or N or V or S;
     end if;
     if (std_match(IR, OpSUB)) then
       En <= '1';
+      ALUOp <= ALU_SUB;
+      SelB <= IR(9) & IR(3 downto 0);
       FlagMask <= Z or C or N or V or S or H;
     end if;
     if (std_match(IR, OpSUBI)) then
       En <= '1';
+      ALUOp <= ALU_SUBI;
+      SelB <= IR(9) & IR(3 downto 0);
       FlagMask <= Z or C or N or V or S or H;
     end if;
     if (std_match(IR, OpSWAP)) then
       En <= '1';
+      ALUOp <= ALU_SWAP;
+      SelB <= IR(8 downto 4);
       FlagMask <= x"00";
     end if;
 
