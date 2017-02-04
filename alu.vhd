@@ -33,8 +33,6 @@
 
 library ieee;
 use ieee.std_logic_1164.all;
-use ieee.std_logic_arith.all;
-use ieee.numeric_std.all;
 use ieee.std_logic_misc.all; 
 
 --
@@ -70,10 +68,6 @@ end  dataflow;
 
 library ieee;
 use ieee.std_logic_1164.all;
-use ieee.std_logic_arith.all;
-use ieee.numeric_std.all;
-use ieee.std_logic_misc.all;
-
 
 entity  Adder  is
     generic (
@@ -120,7 +114,6 @@ end  archAdder;
 ---------------------------------------------------------------------
 library ieee;
 use ieee.std_logic_1164.all;
-use ieee.std_logic_arith.all;
 use ieee.numeric_std.all;
 use ieee.std_logic_misc.all;
 
@@ -253,7 +246,7 @@ begin
     if (std_match(AluOp(3 downto 0), "0010")) then
         -- BLD 
         -- Rd(b) = T 
-        results(3)(conv_integer(unsigned(OperandB))) <= StatRegIn(6);
+        results(3)(to_integer(unsigned(OperandB))) <= StatRegIn(6);
         flags(3) <= "00000000";
         -- no flags are changed in this operation 
     end if;
@@ -273,7 +266,7 @@ begin
         -- BST
         -- T = Rr(b)
         flags(3) <= "00000000";
-        flags(3)(6) <= OperandA(conv_integer(unsigned(OperandB)));
+        flags(3)(6) <= OperandA(to_integer(unsigned(OperandB)));
         
     end if;
     

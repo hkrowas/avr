@@ -10,6 +10,7 @@
 --     20 Apr 98  Glen George       Fixed minor syntax bugs.
 --     18 Apr 04  Glen George       Updated comments and formatting.
 --     21 Jan 06  Glen George       Updated comments.
+--     04 Feb 17  Torkom P          Added architecture for alu test with cunit 
 --
 ----------------------------------------------------------------------------
 
@@ -55,3 +56,82 @@ entity  ALU_TEST  is
     );
 
 end  ALU_TEST;
+
+
+architecture ALU_TEST_ARCH of ALU_TEST is
+    component ALU  
+    port(
+        OperandA  :  in  std_logic_vector(7 downto 0);    -- first operand
+        OperandB  :  in  std_logic_vector(7 downto 0);    -- second operand
+        AluOp     :  in  std_logic_vector(5 downto 0);    -- ALU operation to perform
+        StatRegIn :  in  std_logic_vector(7 downto 0);    -- status register from previous
+        Result    :  out std_logic_vector(7 downto 0);    -- ALU result
+        StatRegOut:  out std_logic_vector(7 downto 0)     -- status register output 
+    );
+    end component;
+    
+    component CUNIT
+    port (
+        IR       :  in  std_logic_vector(15 downto 0);
+        SR       :  in  std_logic_vector(7 downto 0);
+        clock    :  in  std_logic;
+        Con      :  out std_logic_vector(7 downto 0);
+        ConSel   :  out std_logic;
+        ALUOp    :  out std_logic_vector(5 downto 0);
+        En       :  out std_logic;
+        SelA     :  out std_logic_vector(4 downto 0);
+        SelB     :  out std_logic_vector(4 downto 0);
+        ISelect  :  out std_logic_vector(1 downto 0);
+        DBaseSelect :  out std_logic_vector(1 downto 0);
+        BOffSelect  :  out std_logic_vector(1 downto 0);
+        FlagMask    :  out std_logic_vector(7 downto 0)
+    );
+    end component;
+    
+    component SR
+    port(
+        RegIn   :  in  std_logic_vector(7 downto 0);    -- DFF input
+        Mask    :  in  std_logic_vector(7 downto 0);
+        clock   :  in  std_logic;
+        RegOut  :  buffer std_logic_vector(7 downto 0)
+    );
+    end component;
+
+    signal FlagMask     :  std_logic_vector(7 downto 0); -- signal for the flag mask from the cunit
+    signal StatRegOut   :  std_logic_vector(7 downto 0); -- signal out of the ALU 
+    signal ALUOp        :  std_logic_vector(5 downto 0); -- alu operation from the cunit
+	 signal StatusRegister : std_logic_vector(7 downto 0); -- status register signal within cpu 
+    
+
+begin
+
+    arithmetic_logic_unit : ALU 
+    port map (
+      OperandA      =>  OperandA,
+      OperandB      =>  OperandB,
+      AluOp         =>  ALUOp,
+      StatRegIn     =>  StatusRegister,
+      Result        =>  Result,
+      StatRegOut    =>  StatRegOut
+    );
+    
+    control_unit : CUNIT
+    port map (
+      IR => IR,
+		SR => StatusRegister,
+      clock => clock,
+      ALUOp => ALUOp,
+      FlagMask => FlagMask
+    );
+    
+    status_register : SR
+    port map(
+        RegIn => StatRegOut,
+        Mask => FlagMask,
+        clock => clock,
+        RegOut => StatusRegister
+    );
+	 
+	 StatReg <= StatusRegister;
+    
+end ALU_TEST_ARCH;
