@@ -19,6 +19,9 @@ use std.textio.all;
 library opcodes;
 use opcodes.opcodes.all;
 
+library txt_util;
+use txt_util.txt_util.all;
+
 entity alu_tb is
 end alu_tb;
 
@@ -39,16 +42,10 @@ architecture alu_tb_arch of alu_tb is
     signal OperandB  :  std_logic_vector(7 downto 0);  -- second operand
     signal clock     :  std_logic;                     -- system clock
     signal Result    :  std_logic_vector(7 downto 0);  -- ALU result
-    signal StatReg   :  std_logic_vector(7 downto 0);   -- status register
+    signal StatReg   :  std_logic_vector(7 downto 0) := "00000000";   -- status register
     
 	 
-	 variable IR_file			:  bit_vector(15 downto 0);  -- IR for operation
-	 variable OperandA_file	:  bit_vector( 7 downto 0);  -- Operand A for operation
-	 variable OperandB_file	:  bit_vector( 7 downto 0);  -- Operand B for operation
-	 variable Result_file 	:  bit_vector(7 downto 0);  -- expected result
-    variable StatReg_file  :  bit_vector(7 downto 0);   -- expected SR
-
-    signal END_SIM : BOOLEAN := FALSE;
+	 signal END_SIM : BOOLEAN := FALSE;
 
 begin
     UUT : ALU_TEST
@@ -67,6 +64,12 @@ begin
     file test_file : text is in "..\test\alu_test.txt";
     
     variable rline : line; -- This contains one line from the data 
+	 
+	 variable IR_file			:  string(1 to 16);  -- IR for operation
+	 variable OperandA_file	:  string(1 to  9);  -- Operand A for operation
+	 variable OperandB_file	:  string(1 to  9);  -- Operand B for operation
+	 variable Result_file 	:  string(1 to  9);  -- expected result
+    variable StatReg_file  :  string(1 to  9);  -- expected SR
      
   begin
  
@@ -79,20 +82,21 @@ begin
       read(rline, IR_file);          -- IR 
       read(rline, OperandA_file);    -- OperandA
       read(rline, OperandB_file);    -- OperandB
-      read(rline, Result_file);  		-- SR
-      read(rline, StatReg_file); 		-- Result 
-		 
+      read(rline, StatReg_file); 	 -- SR
+      read(rline, Result_file);  	 -- Result
 		  
-		IR <= to_stdlogicvector(IR_file);
-      OperandA <= to_stdlogicvector(OperandA_file);
-      OperandB <= to_stdlogicvector(OperandB_file);
+	   IR <= to_std_logic_vector(IR_file);
+		-- Taking a slice from 2 to 9 since there is a space between 
+		--  the inputs in the txt file but not for the IR register
+      OperandA <= to_std_logic_vector(OperandA_file(2 to 9));
+      OperandB <= to_std_logic_vector(OperandB_file(2 to 9));
 		  
       -- Check the result of the operation 
-      wait for 100 ns;
-      assert(std_match(Result, to_stdlogicvector(Result_file)))    -- See if result is the same.
+      wait for 40 ns;
+      assert(std_match(Result, to_std_logic_vector(Result_file(2 to 9))))    -- See if result is the same.
           report  "result incorrect"
           severity  ERROR;
-      assert(std_match(StatReg, to_stdlogicvector(StatReg_file)))  -- See if SR is correct
+      assert(std_match(StatReg, to_std_logic_vector(StatReg_file(2 to 9))))  -- See if SR is correct
           report "status register incorrect"
           severity  ERROR;
     end loop;

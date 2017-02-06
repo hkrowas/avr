@@ -118,7 +118,7 @@ begin
     control_unit : CUNIT
     port map (
       IR => IR,
-		SR => StatusRegister,
+	  SR => StatusRegister,
       clock => clock,
       ALUOp => ALUOp,
       FlagMask => FlagMask

@@ -165,10 +165,10 @@ begin
   process (results(0), AluOp, OperandA, OperandB)
   begin
 	  for i in  results(0)'range loop
-        results(0)(i)  <=   (AluOp(0) and (not OperandA(i)) and  (not OperandB(i))) or
-                            (AluOp(1) and (not OperandA(i)) and       OperandB(i) ) or
-                            (AluOp(2) and      OperandA(i)  and  (not OperandB(i))) or
-                            (AluOp(3) and      OperandA(i)  and       OperandB(i) );
+        results(0)(i)  <=   (AluOp(2) and (not OperandA(i)) and  (not OperandB(i))) or
+                            (AluOp(3) and (not OperandA(i)) and       OperandB(i) ) or
+                            (AluOp(4) and      OperandA(i)  and  (not OperandB(i))) or
+                            (AluOp(5) and      OperandA(i)  and       OperandB(i) );
 	  end loop;
   end process;
   
@@ -176,7 +176,7 @@ begin
   flags(0)(1) <= NOR_REDUCE(results(0));                     -- Z Flag 
   flags(0)(2) <= results(0)(7);                					 -- N flag 
   flags(0)(3) <= '0';                                        -- V Flag 
-  flags(0)(4) <=  (results(0)(7)) xor '0';       					 -- S Flag 
+  flags(0)(4) <=  (results(0)(7)) xor '0';       				 -- S Flag 
   flags(0)(5) <= '0';                                        -- H Flag 
   flags(0)(6) <= '0';                                        -- T Flag
   flags(0)(7) <= '0';                                        -- I Flag 
@@ -188,13 +188,13 @@ begin
   process (OperandB, AluOp, tempB)
   begin
 	  for i in OperandB'range loop
-			tempB(i) <= OperandB(i) xor AluOp(0);
+			tempB(i) <= OperandB(i) xor AluOp(2);
 	  end loop;
   end process;
   
   -- generate the tempC signal by xor the carry flag and the add/sub signal
   -- carry flag is and with the AluOp indicating if carry is used in operation   
-  tempC <= (StatRegIn(0) and AluOp(1)) xor AluOp(0);
+  tempC <= (StatRegIn(0) and AluOp(3)) xor AluOp(2);
   
   -- Create a full adder subtractor using the Adder entity 
   --  Add/Sub changes the carry and half carry flags 
@@ -218,9 +218,9 @@ begin
 	  end loop;
   end process;
   -- take care of the high bit
-  results(2)(results(2)'high)  <=   (AluOp(0) and OperandA(OperandA'high)) or
-                                    (AluOp(1) and OperandA(0)) or
-                                    (AluOp(2) and '0');
+  results(2)(results(2)'high)  <=   (AluOp(2) and OperandA(OperandA'high)) or
+                                    (AluOp(3) and OperandA(0)) or
+                                    (AluOp(4) and '0');
                       
   -- flags for Shift Rotate Block 
   flags(2)(0) <= OperandA(0);                                -- C Flag 
@@ -237,37 +237,47 @@ begin
   ---------------------------------------------------------------------
   process(AluOp, StatRegIn, OperandA)
   begin
-    if (std_match(AluOp(3 downto 0), "0001")) then
+    if (std_match(AluOp(5 downto 2), "0001")) then
         -- SWAP nibbles of the operand 
         results(3)(7 downto 4) <= OperandA(3 downto 0);
         results(3)(3 downto 0) <= OperandA(7 downto 4);
-        -- no flags are changed in this operation 
+        -- no flags are changed in this operation
+		  flags(3) <= "00000000";
+		  
     end if;
-    if (std_match(AluOp(3 downto 0), "0010")) then
+    if (std_match(AluOp(5 downto 2), "0010")) then
         -- BLD 
-        -- Rd(b) = T 
-        results(3)(to_integer(unsigned(OperandB))) <= StatRegIn(6);
-        flags(3) <= "00000000";
-        -- no flags are changed in this operation 
+        -- Rd(b) = T
+		  results(3) <= OperandA;
+        results(3)(to_integer(unsigned(OperandB(2 downto 0)))) <= StatRegIn(6);
+
+        -- no flags are changed in this operation
+		  flags(3) <= "00000000";
+		  
     end if;
-    if (std_match(AluOp(3 downto 0), "0100")) then
+    if (std_match(AluOp(5 downto 2), "0100")) then
         -- BSET
         -- SREG(s) = 1
-        flags(3) <= "11111111";
-        
+		  results(3) <= "00000001";
+		  
+		  flags(3) <= "11111111";
+		          
     end if;
-    if (std_match(AluOp(3 downto 0), "1000")) then
+    if (std_match(AluOp(5 downto 2), "1000")) then
         -- BCLR
         -- SREG(s) = 0
+		  results(3) <= "00000000";
+
         flags(3) <= "00000000";
-        
+		          
     end if;
-    if (std_match(AluOp(3 downto 0), "0000")) then
+    if (std_match(AluOp(5 downto 2), "0000")) then
         -- BST
         -- T = Rr(b)
-        flags(3) <= "00000000";
-        flags(3)(6) <= OperandA(to_integer(unsigned(OperandB)));
-        
+		  results(3) <= (0 => flags(3)(6), others => '0');
+		  
+		   flags(3) <= (6 => OperandA(to_integer(unsigned(OperandB(2 downto 0)))), others => '0');
+       
     end if;
     
   end process;
@@ -275,9 +285,9 @@ begin
   ---------------------------------------------------------------------
   -- Result and Flag Mux 
   ---------------------------------------------------------------------
-  process(AluOp, StatRegIn, OperandA)
+  process(AluOp, StatRegIn, OperandA, results, flags)
   begin
-    if (std_match(AluOp(5 downto 4), "00")) then
+    if (std_match(AluOp(1 downto 0), "00")) then
         -- use result of the F block 
         Result <= results(0); 
         
@@ -285,7 +295,7 @@ begin
         StatRegOut <= flags(0);
         
     end if;
-    if (std_match(AluOp(5 downto 4), "01")) then
+    if (std_match(AluOp(1 downto 0), "01")) then
         -- use result of the Add/Sub block 
         Result <= results(1); 
         
@@ -293,7 +303,7 @@ begin
         StatRegOut <= flags(1);
         
     end if;
-    if (std_match(AluOp(5 downto 4), "10")) then
+    if (std_match(AluOp(1 downto 0), "10")) then
         -- use result of the shift rotate block 
         Result <= results(2); 
         
@@ -301,7 +311,7 @@ begin
         StatRegOut <= flags(2);
         
     end if;
-    if (std_match(AluOp(5 downto 4), "11")) then
+    if (std_match(AluOp(1 downto 0), "11")) then
         -- use result from the bitwise operations block 
         Result <= results(3); 
         
