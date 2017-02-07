@@ -70,10 +70,12 @@ begin
 	 variable OperandB_file	:  string(1 to  9);  -- Operand B for operation
 	 variable Result_file 	:  string(1 to  9);  -- expected result
     variable StatReg_file  :  string(1 to  9);  -- expected SR
+	 variable prevStat		:  std_logic_vector(7 downto 0) := "--------"; -- Latched value of SR
      
   begin
- 
+		
     while not endfile(test_file) loop 
+		wait for 1 ns;
 		
 		-- Read one line into the test bench
       readline(test_file, rline);	
@@ -91,14 +93,19 @@ begin
       OperandA <= to_std_logic_vector(OperandA_file(2 to 9));
       OperandB <= to_std_logic_vector(OperandB_file(2 to 9));
 		  
-      -- Check the result of the operation 
-      wait for 40 ns;
+      -- Check the result of the operation
+		wait for 18 ns;
+
       assert(std_match(Result, to_std_logic_vector(Result_file(2 to 9))))    -- See if result is the same.
           report  "result incorrect"
           severity  ERROR;
-      assert(std_match(StatReg, to_std_logic_vector(StatReg_file(2 to 9))))  -- See if SR is correct
+      assert(std_match(StatReg, prevStat))  -- See if SR is correct
           report "status register incorrect"
           severity  ERROR;
+		prevStat := to_std_logic_vector(StatReg_file(2 to 9));
+		
+		wait for 1 ns;
+		
     end loop;
     END_SIM <= TRUE;
     wait;
@@ -111,14 +118,14 @@ begin
 
       -- only generate clock if still simulating
       if END_SIM = FALSE then
-          clock <= '0';
+          clock <= '1';
           wait for 10 ns;
       else
           wait;
       end if;
 
       if END_SIM = FALSE then
-          clock <= '1';
+          clock <= '0';
           wait for 10 ns;
       else
           wait;

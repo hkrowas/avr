@@ -104,7 +104,7 @@ begin
 
     end generate;
     
-    Coh <= carry(3);                         -- carry out of bit 3 into bit 4
+    Coh <= carry(4);                         -- carry out of bit 3 into bit 4
     Co6 <= carry(7);                         -- carry out of bit 6 into bit 7
     Co <= carry(carry'high);                 -- carry out is from carry vector
 end  archAdder;
@@ -154,7 +154,8 @@ architecture ALU_ARCH of ALU is
   
   signal tempB : std_logic_vector(7 downto 0);    -- OperandB xor with sub/add
   signal tempC : std_logic;                       -- Carry flag xor with sub/add
-    
+  signal temp_cout: std_logic;						  -- Carry out signal
+  signal temp_coh:  std_logic; 						  -- Half carry signal  
   signal temp_co6 : std_logic;                    -- Carry out of bit 6 
     
 begin
@@ -176,7 +177,7 @@ begin
   flags(0)(1) <= NOR_REDUCE(results(0));                     -- Z Flag 
   flags(0)(2) <= results(0)(7);                					 -- N flag 
   flags(0)(3) <= '0';                                        -- V Flag 
-  flags(0)(4) <=  (results(0)(7)) xor '0';       				 -- S Flag 
+  flags(0)(4) <=  (results(0)(7));       				 			 -- S Flag 
   flags(0)(5) <= '0';                                        -- H Flag 
   flags(0)(6) <= '0';                                        -- T Flag
   flags(0)(7) <= '0';                                        -- I Flag 
@@ -198,15 +199,18 @@ begin
   
   -- Create a full adder subtractor using the Adder entity 
   --  Add/Sub changes the carry and half carry flags 
-  AddSub: Adder port map (OperandA, tempB, tempC, results(1), flags(1)(0), flags(1)(5), temp_co6);
+  AddSub: Adder port map (OperandA, tempB, tempC, results(1), temp_cout, temp_coh, temp_co6);
   
   -- flags for Shift Rotate Block 
-  flags(1)(1) <= NOR_REDUCE(results(1));                     -- Z Flag 
+  flags(1)(0) <= temp_cout xor AluOp(2);								-- C Flag
+  flags(1)(1) <= (NOR_REDUCE(results(1)) and not (AluOp(3) and AluOp(2))) 
+					or (StatRegIn(1) and (AluOp(3) and AluOp(2))); 	-- Z Flag 
   flags(1)(2) <= results(1)(results(1)'high);                  -- N flag 
-  flags(1)(3) <= flags(1)(0) xor temp_co6;                  -- V Flag 
-  flags(1)(4) <= results(1)(results(1)'high) xor flags(1)(0) xor temp_co6; -- S Flag 
-  flags(1)(6) <= '0';                                        -- T Flag
-  flags(1)(7) <= '0';                                        -- I Flag 
+  flags(1)(3) <= flags(1)(0) xor temp_co6 xor AluOp(2);       	-- V Flag 
+  flags(1)(4) <= flags(1)(2) xor flags(1)(3); 						-- S Flag 
+  flags(1)(5) <= temp_coh xor AluOp(2);								-- H Flag
+  flags(1)(6) <= '0';                                        	-- T Flag
+  flags(1)(7) <= '0';                                        	-- I Flag 
   
   ---------------------------------------------------------------------
   -- ALU Shift/Rotate Block 
@@ -225,9 +229,9 @@ begin
   -- flags for Shift Rotate Block 
   flags(2)(0) <= OperandA(0);                                -- C Flag 
   flags(2)(1) <= NOR_REDUCE(results(2));                     -- Z Flag 
-  flags(2)(2) <= results(2)(results(2)'high);                  -- N flag 
-  flags(2)(3) <= results(2)(results(2)'high) xor OperandA(0);  -- V Flag 
-  flags(2)(4) <= NOR_REDUCE(results(2)) xor results(2)(results(2)'high) xor OperandA(0); -- S Flag 
+  flags(2)(2) <= results(2)(results(2)'high);                -- N flag 
+  flags(2)(3) <= results(2)(results(2)'high) xor OperandA(0);-- V Flag 
+  flags(2)(4) <= flags(2)(2) xor flags(2)(3); 					 -- S Flag 
   flags(2)(5) <= '0';                                        -- H Flag 
   flags(2)(6) <= '0';                                        -- T Flag
   flags(2)(7) <= '0';                                        -- I Flag 
