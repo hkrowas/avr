@@ -13,7 +13,11 @@
 --
 --  CUNIT
 --
---  The centrel unit for the AVR.
+--  The control unit for the AVR. It includes an instruction decoder and a state
+--  machine for controlling external blocks with multicycle instructions. It
+--  controls the register array, the data access unit, the instruction address
+--  unit, the flagmask for the SR, the enable for the SP, the R/W lines for
+--  memory access, and sends an op code to the ALU for arithmetic operations.
 --
 --  Inputs:
 --    IR  -  Instruction register for instruction decoding
@@ -21,10 +25,21 @@
 --    clock
 --
 --  Outputs:
+--    DataRd - Data read enable (active low)
+--    DataWr - Data write enable (active low)
+--    SP_EN - Write enable for SP for PUSH/POP
+--    PrePost - Pre/Post increment select
 --    Con  - constant operand
 --    ConSel - Selects whether to use a constant as the second ALU operand
 --    ALUOp - Operation code sent to ALU (maybe some substring of instruction opcode)
 --    En  -  Register array write enable
+--    EnW - Word write to register array
+--    DMux - Mux select for the data unit, which outputs to RegIn
+--           "00" ALUOut
+--           "01" DataBus
+--           "10" IR constant
+--           "11" RegB for MOV instruction
+--    WSel - Word write select to register array
 --    SelA  -  Register A select (to ALU)
 --    SelB  -  Register B select (to ALU)
 --    ISelect  -  Instruction access unit source select
@@ -32,10 +47,10 @@
 --    BOffSelect   -  Data access unit offset select
 --    FlagMask  -  SR mask. Set bits indicate that flag changes with instruction.
 --    ALUOp - Operation sent to ALU
---            "----00"   F-Block select
---            "----01"   Add/Sub select
---            "----10"   Shifter select
---            "----11"   Misc select
+--              "----00"   F-Block select
+--              "----01"   Add/Sub select
+--              "----10"   Shifter select
+--              "----11"   Misc select
 --            F-Block
 --              "000000"   0
 --              "000100"   A nor B
@@ -80,15 +95,22 @@ entity  CUNIT  is
         IR       :  in  opcode_word;
         SR       :  in  std_logic_vector(7 downto 0);
         clock    :  in  std_logic;
+        DataRd   :  out std_logic;
+        DataWr   :  out std_logic;
+        PrePost  :  out std_logic;
+        SP_EN    :  out std_logic;
         Con      :  out std_logic_vector(7 downto 0);
         ConSel   :  out std_logic;
         ALUOp    :  out std_logic_vector(5 downto 0);
         En       :  out std_logic;
+        EnW      :  out std_logic;
+        DMux     :  out std_logic_vector(1 downto 0);
+        WSel     :  out std_logic_vector(1 downto 0);
         SelA     :  out std_logic_vector(4 downto 0);
         SelB     :  out std_logic_vector(4 downto 0);
         ISelect  :  out std_logic_vector(1 downto 0);
-        DBaseSelect :  out std_logic_vector(1 downto 0);
-        BOffSelect  :  out std_logic_vector(1 downto 0);
+        DBaseSelect :  out std_logic_vector(2 downto 0);
+        DOffSelect  :  out std_logic_vector(1 downto 0);
         FlagMask    :  out std_logic_vector(7 downto 0)
     );
 end  CUNIT;
@@ -120,9 +142,9 @@ architecture CUNIT_ARCH of CUNIT is
   constant ALU_CPC   :  std_logic_vector(5 downto 0) := "001101";
   constant ALU_CPI   :  std_logic_vector(5 downto 0) := ALU_CP;
   constant ALU_SUB   :  std_logic_vector(5 downto 0) := "000101";
-  constant ALU_DEC   :  std_logic_vector(5 downto 0) := "010101";
+  constant ALU_DEC   :  std_logic_vector(5 downto 0) := ALU_SUB;
   constant ALU_EOR   :  std_logic_vector(5 downto 0) := "011000";
-  constant ALU_INC   :  std_logic_vector(5 downto 0) := "010001";
+  constant ALU_INC   :  std_logic_vector(5 downto 0) := "100001";
   constant ALU_LSR   :  std_logic_vector(5 downto 0) := "100010";
   constant ALU_NEG   :  std_logic_vector(5 downto 0) := "100101";
   constant ALU_OR    :  std_logic_vector(5 downto 0) := "111000";
@@ -134,22 +156,56 @@ architecture CUNIT_ARCH of CUNIT is
   constant ALU_SUBI  :  std_logic_vector(5 downto 0) := ALU_SUB;
   constant ALU_SWAP  :  std_logic_vector(5 downto 0) := "000111";
 
-  signal count  :  std_logic;       -- counter for 2 clock instructions
+  -- DBaseSelect Constants
+  constant XReg : std_logic_vector(2 downto 0) := "000";
+  constant YReg : std_logic_vector(2 downto 0) := "001";
+  constant ZReg : std_logic_vector(2 downto 0) := "010";
+  constant IR_SEL : std_logic_vector(2 downto 0) := "011";
+  constant SP_SEL : std_logic_vector(2 downto 0) := "100";
+
+  -- DOffSelect Constants
+  constant const : std_logic_vector(1 downto 0) := "00";
+  constant neg_one : std_logic_vector(1 downto 0) := "01";
+  constant one : std_logic_vector(1 downto 0) := "10";
+
+  signal count  :  std_logic_vector(1 downto 0);       -- counter for 2 clock instructions
+
+  -- Type for Instruction Decoding State machine
+  type i_states is (
+    IDLE,             -- State for 1 cycle instructions
+    WORD_INSTRUCTION, -- State for 2 cycle word operation instructions
+    READ_INSTRUCTION, -- 2 Cycle read instruction
+    WRITE_INSTRUCTION,-- 2 Cycle write instruction
+    STS_INSTRUCTION,  -- For STS
+    LDS_INSTRUCTION,  -- For LDS
+    MEM_END           -- Last cycle of STS and LDS
+  );
+
+  signal IState  :  i_states;
 
 begin
-  --SelB <= IR(9) & IR(3 downto 0);   -- SelB is this for all opcodes
 
   process(IR, SR, clock, count)
   begin
     -- All opcodes. This section controls En and the flag mask, which are both
     -- specific to the instruction.
-    En <= 'X';
-    ALUOp <= "XXXXXX";
-    SelA <= "XXXXX";
-    SelB <= "XXXXX";
-    FlagMask <= "XXXXXXXX";
-    Con <= "XXXXXXXX";
-    ConSel <= 'X';
+    En <= '-';
+    PrePost <= '-';
+    ALUOp <= "------";
+    SelA <= "-----";
+    SelB <= "00000";
+    FlagMask <= "00000000";
+    Con <= "--------";
+    ConSel <= '-';
+    SP_EN <= '0';     -- Default is to not change SP
+    EnW <= '0';       -- Default is to not word write
+    DBaseSelect <= "---";
+    DOffSelect <= "--";
+    WSel <= "--";
+    DMux <= "00";
+
+----------- ALU Operations------------------------------------------------
+
     if (std_match(IR, OpADC)) then
       En <= '1';
       ALUOp <= ALU_ADC;
@@ -164,7 +220,7 @@ begin
     end if;
     if (std_match(IR, OpADIW)) then
       En <= '1';
-      if (count = '0') then
+      if (count = "0") then
         ALUOp <= ALU_ADD;
       else
         ALUOp <= ALU_ADC;
@@ -320,7 +376,7 @@ begin
     end if;
     if (std_match(IR, OpSBIW)) then
       En <= '1';
-      if (count = '0') then
+      if (count = "0") then
         ALUOp <= ALU_SUB;
       else
         ALUOp <= ALU_SBC;
@@ -347,12 +403,270 @@ begin
       FlagMask <= x"00";
     end if;
 
-    -- This section controls the value of SelA and Con based on the opcode
+--------- Data Access Operations----------------------------------------------
+
+    if (std_match(IR, OpLDX)) then
+      DMux <= "01";
+      if (count = "00") then
+        En <= '0';
+      end if;
+      if (count = "01") then
+        En <= '1';
+      end if;
+      DBaseSelect <= XReg;
+      PrePost <= '1';
+    end if;
+    if (std_match(IR, OpLDXI)) then
+      DMux <= "01";
+      if (count = "00") then
+        EnW <= '0';
+        En <= '0';
+      end if;
+      if (count = "01") then
+        EnW <= '1';
+        En <= '1';
+      end if;
+      DBaseSelect <= XReg;
+      DOffSelect <= one;
+      PrePost <= '1';
+      WSel <= XReg(1 downto 0);
+    end if;
+    if (std_match(IR, OpLDXD)) then
+      DMux <= "01";
+      if (count = "00") then
+        EnW <= '0';
+      end if;
+      if (count = "01") then
+        EnW <= '1';
+      end if;
+      En <= '1';
+      DBaseSelect <= XReg;
+      DOffSelect <= neg_one;
+      PrePost <= '0';
+      WSel <= XReg(1 downto 0);
+    end if;
+    if (std_match(IR, OpLDYI)) then
+      DMux <= "01";
+      if (count = "00") then
+        EnW <= '0';
+      end if;
+      if (count = "01") then
+        EnW <= '1';
+      end if;
+      En <= '1';
+      DBaseSelect <= YReg;
+      DOffSelect <= one;
+      PrePost <= '1';
+      WSel <= YReg(1 downto 0);
+    end if;
+    if (std_match(IR, OpLDYD)) then
+      DMux <= "01";
+      if (count = "00") then
+        EnW <= '0';
+      end if;
+      if (count = "01") then
+        EnW <= '1';
+      end if;
+      En <= '1';
+      DBaseSelect <= YReg;
+      DOffSelect <= neg_one;
+      PrePost <= '0';
+      WSel <= YReg(1 downto 0);
+    end if;
+    if (std_match(IR, OpLDZI)) then
+      DMux <= "01";
+      if (count = "00") then
+        EnW <= '0';
+      end if;
+      if (count = "01") then
+        EnW <= '1';
+      end if;
+      En <= '1';
+      DBaseSelect <= ZReg;
+      DOffSelect <= one;
+      PrePost <= '1';
+      WSel <= ZReg(1 downto 0);
+    end if;
+    if (std_match(IR, OpLDZD)) then
+      DMux <= "01";
+      if (count = "00") then
+        EnW <= '0';
+      end if;
+      if (count = "01") then
+        EnW <= '1';
+      end if;
+      En <= '1';
+      DBaseSelect <= ZReg;
+      DOffSelect <= neg_one;
+      PrePost <= '0';
+      WSel <= ZReg(1 downto 0);
+    end if;
+    if (std_match(IR, OpLDDY)) then
+      DMux <= "01";
+      En <= '1';
+      DBaseSelect <= YReg;
+      DOffSelect <= const;
+      PrePost <= '0';
+    end if;
+    if (std_match(IR, OpLDDZ)) then
+      DMux <= "01";
+      En <= '1';
+      DBaseSelect <= ZReg;
+      DOffSelect <= const;
+      PrePost <= '0';
+    end if;
+    if (std_match(IR, OpLDS)) then
+      DMux <= "01";
+      En <= '1';
+      DBaseSelect <= IR_SEL;
+      PrePost <= '1';
+    end if;
+    if (std_match(IR, OpSTX)) then
+      En <= '0';
+      DBaseSelect <= XReg;
+      PrePost <= '1';
+    end if;
+    if (std_match(IR, OpSTXI)) then
+      if (count = "00") then
+        EnW <= '0';
+      end if;
+      if (count = "01") then
+        EnW <= '1';
+      end if;
+      En <= '0';
+      DBaseSelect <= XReg;
+      DOffSelect <= one;
+      PrePost <= '1';
+      WSel <= XReg(1 downto 0);
+    end if;
+    if (std_match(IR, OpSTXD)) then
+      if (count = "00") then
+        EnW <= '0';
+      end if;
+      if (count = "01") then
+        EnW <= '1';
+      end if;
+      En <= '0';
+      DBaseSelect <= XReg;
+      DOffSelect <= neg_one;
+      PrePost <= '0';
+      WSel <= XReg(1 downto 0);
+    end if;
+    if (std_match(IR, OpSTYI)) then
+      if (count = "00") then
+        EnW <= '0';
+      end if;
+      if (count = "01") then
+        EnW <= '1';
+      end if;
+      En <= '0';
+      DBaseSelect <= YReg;
+      DOffSelect <= one;
+      PrePost <= '1';
+      WSel <= YReg(1 downto 0);
+    end if;
+    if (std_match(IR, OpSTYD)) then
+      if (count = "00") then
+        EnW <= '0';
+      end if;
+      if (count = "01") then
+        EnW <= '1';
+      end if;
+      En <= '0';
+      DBaseSelect <= YReg;
+      DOffSelect <= neg_one;
+      PrePost <= '0';
+      WSel <= YReg(1 downto 0);
+    end if;
+    if (std_match(IR, OpSTZI)) then
+      if (count = "00") then
+        EnW <= '0';
+      end if;
+      if (count = "01") then
+        EnW <= '1';
+      end if;
+      En <= '0';
+      DBaseSelect <= ZReg;
+      DOffSelect <= one;
+      PrePost <= '1';
+      WSel <= ZReg(1 downto 0);
+    end if;
+    if (std_match(IR, OpSTZD)) then
+      if (count = "00") then
+        EnW <= '0';
+      end if;
+      if (count = "01") then
+        EnW <= '1';
+      end if;
+      En <= '0';
+      DBaseSelect <= ZReg;
+      DOffSelect <= neg_one;
+      PrePost <= '0';
+      WSel <= ZReg(1 downto 0);
+    end if;
+    if (std_match(IR, OpPOP)) then
+      DMux <= "01";
+      EnW <= '0';
+      En <= '0';
+      DBaseSelect <= SP_SEL;
+      DOffSelect <= one;
+      PrePost <= '0';
+      if (count = "01") then
+        -- Write Out SP on last cycle
+        En <= '1';
+        SP_EN <= '1';
+      end if;
+    end if;
+    if (std_match(IR, OpPUSH)) then
+      EnW <= '0';
+      En <= '0';
+      DBaseSelect <= SP_SEL;
+      DOffSelect <= neg_one;
+      PrePost <= '1';
+      if (count = "01") then
+        -- Write Out SP on last cycle
+        SP_EN <= '1';
+      end if;
+    end if;
+    -- Immediate Memory Instructions
+    if (std_match(IR, OpSTS)) then
+      PrePost <= '1';
+      DBaseSelect <= IR_SEL;
+      En <= '0';
+    end if;
+    if (std_match(IR, OpMOV)) then
+      DMux <= "11";
+      En <= '1';
+      SelB <= IR(9) & IR(3 downto 0);
+    end if;
+    if (std_match(IR, OpLDI)) then
+      DMux <= "10";
+      En <= '1';
+    end if;
+    if (std_match(IR, OpSTDY)) then
+      PrePost <= '0';
+      DBaseSelect <= YReg;
+      DOffSelect <= const;
+      En <= '0';
+    end if;
+    if (std_match(IR, OpSTDZ)) then
+      PrePost <= '0';
+      DBaseSelect <= ZReg;
+      DOffSelect <= const;
+      En <= '0';
+    end if;
+
+-------- This section controls the value of SelA and Con based on the opcode----
+
+    -- Default values
+    ConSel <= '0';
+    Con <= IR(11 downto 8) & IR(3 downto 0);
+    SelA <= IR(8 downto 4);
 
     -- If word instruction
     if (std_match(IR, OpSBIW) or std_match(IR, OpADIW)) then
       ConSel <= '1';
-      if (count = '0') then
+      if (count = "00") then
         Con <= "00" & IR(7 downto 6) & IR(3 downto 0);
         SelA <= "11" & IR(5 downto 4) & "0";
       else
@@ -363,32 +677,81 @@ begin
 
     -- If an immediate instruction
     if (std_match(IR, OpANDI) or std_match(IR, OpCPI) or std_match(IR, OpORI)
-      or std_match(IR, OpSBCI) or std_match(IR, OpSUBI)) then
+      or std_match(IR, OpSBCI) or std_match(IR, OpSUBI) or std_match(IR, OpLDI)) then
       ConSel <= '1';
       SelA <= "1" & IR(7 downto 4);
       Con <= IR(11 downto 8) & IR(3 downto 0);
     end if;
 
-    -- If not immediate or word.
-    if (not(std_match(IR, OpANDI) or std_match(IR, OpCPI) or std_match(IR, OpORI)
-      or std_match(IR, OpSBCI) or std_match(IR, OpSUBI) or std_match(IR, OpSBIW)
-      or std_match(IR, OpADIW))) then
-      ConSel <= '0';
-      Con <= IR(11 downto 8) & IR(3 downto 0);
-      SelA <= IR(8 downto 4);
-    end if;
   end process;
 
-  -- This process controls the finite state machine for instruction decoding.
+----- This process controls the finite state machine for instruction decoding--
+----  It also controls the DataWr/Rd to prevent glitching ----------------------
+
   process (clock)
   begin
     if (clock = '1') then
-      -- Counter used for multiclock instructions
-      if (std_match(IR, OpSBIW) or std_match(IR, OpADIW)) then
-        count <= not(count);
-      else
-        count <= '0';
-      end if;
+      case IState is
+        when IDLE =>
+          count <= "00";
+          DataWr <= '1';
+          DataRd <= '1';
+          if (std_match(IR, OpSBIW) or std_match(IR, OpADIW)) then
+            count <= "01";
+            IState <= WORD_INSTRUCTION;
+          end if;
+          -- If LD instruction
+          if (std_match("1001000---------", IR)
+              or std_match("10-0--0---------", IR)) then
+            count <= "01";
+            if (std_match(OpLDS, IR)) then
+              IState <= LDS_INSTRUCTION;
+            else
+              DataRd <= '0';
+              IState <= READ_INSTRUCTION;
+            end if;
+          end if;
+          -- If ST instruction
+          if (std_match("1001001---------", IR)
+              or std_match("10-0--1---------", IR)) then
+            count <= "01";
+            if (std_match(OpSTS, IR)) then
+              IState <= STS_INSTRUCTION;
+            else
+              DataWr <= '0';
+              IState <= WRITE_INSTRUCTION;
+            end if;
+          end if;
+        when WORD_INSTRUCTION =>
+          count <= "00";
+          IState <= IDLE;
+        when READ_INSTRUCTION =>
+          count <= "00";
+          DataRd <= '1';
+          IState <= IDLE;
+        when WRITE_INSTRUCTION =>
+          count <= "00";
+          DataWr <= '1';
+          IState <= IDLE;
+        when STS_INSTRUCTION =>
+          count <= "10";
+          DataWr <= '0';
+          IState <= MEM_END;
+        when LDS_INSTRUCTION =>
+          count <= "10";
+          DataRd <= '0';
+          IState <= MEM_END;
+        when MEM_END =>
+          count <= "00";
+          DataWr <= '1';
+          DataRd <= '1';
+          IState <= IDLE;
+        when others =>
+          count <= "00";
+          DataRd <= '1';
+          DataWr <= '1';
+          IState <= IDLE;
+      end case;
     end if;
   end process;
 end CUNIT_ARCH;

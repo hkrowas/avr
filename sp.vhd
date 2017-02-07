@@ -17,6 +17,8 @@
 --  Inputs:
 --    SPIn   - Input from the Control Unit
 --    clock  - DFF clock
+--    Reset  - active low synchronous reset
+--    En_SP   - register enable
 --
 --  Outputs:
 --    SPOut - Output of SP
@@ -34,6 +36,21 @@ entity  SP  is
     port(
         SPin   :  in  std_logic_vector(15 downto 0);    -- DFF input
         clock  :  in  std_logic;
-        SPOut  :  out  std_logic_vector(15 downto 0)    -- DFF output
+        Reset  :  in  std_logic;
+        En_SP  :  in  std_logic;
+        SPOut  :  buffer  std_logic_vector(15 downto 0)    -- DFF output
     );
 end  SP;
+
+architecture SP_ARCH of SP is
+begin
+  process(clock)
+  begin
+    if (rising_edge(clock)) then
+      -- En_SP enables writes to SP. Reset makes SP all ones.
+      for i in 15 downto 0 loop
+        SPOut(i) <= (SPin(i) and En_SP) or (SPout(i) and not(En_SP)) or not(Reset);
+      end loop;
+    end if;
+  end process;
+end SP_ARCH;

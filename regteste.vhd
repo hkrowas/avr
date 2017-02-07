@@ -30,6 +30,7 @@
 --  Outputs:
 --    RegAOut - register bus A output (8 bits), eventually will connect to ALU
 --    RegBOut - register bus B output (8 bits), eventually will connect to ALU
+--    ALUOp
 --
 
 library ieee;
@@ -57,8 +58,11 @@ architecture REG_TEST_ARCH of REG_TEST is
           RegIn    :  in  std_logic_vector(7 downto 0);       -- input register bus
           clock    :  in  std_logic;                          -- system clock
           En       :  in  std_logic;                          -- Write enable
+          EnW      :  in  std_logic;
+          WSel     :  in  std_logic_vector(1 downto 0);
           SelA     :  in  std_logic_vector(4 downto 0);
           SelB     :  in  std_logic_vector(4 downto 0);
+          Address  :  in  std_logic_vector(15 downto 0);
           RegA     :  out std_logic_vector(7 downto 0);       -- register bus A out
           RegB     :  out std_logic_vector(7 downto 0);       -- register bus B out
           XReg     :  out std_logic_vector(15 downto 0);
@@ -68,19 +72,26 @@ architecture REG_TEST_ARCH of REG_TEST is
   end component;
   component CUNIT
     port (
-        IR       :  in  std_logic_vector(15 downto 0);
-        SR       :  in  std_logic_vector(7 downto 0);
-        clock    :  in  std_logic;
-        Con      :  out std_logic_vector(7 downto 0);
-        ConSel   :  out std_logic;
-        ALUOp    :  out std_logic_vector(5 downto 0);
-        En       :  out std_logic;
-        SelA     :  out std_logic_vector(4 downto 0);
-        SelB     :  out std_logic_vector(4 downto 0);
-        ISelect  :  out std_logic_vector(1 downto 0);
-        DBaseSelect :  out std_logic_vector(1 downto 0);
-        BOffSelect  :  out std_logic_vector(1 downto 0);
-        FlagMask    :  out std_logic_vector(7 downto 0)
+      IR       :  in  opcode_word;
+      SR       :  in  std_logic_vector(7 downto 0);
+      clock    :  in  std_logic;
+      DataRd   :  out std_logic;
+      DataWr   :  out std_logic;
+      PrePost  :  out std_logic;
+      SP_EN    :  out std_logic;
+      RegInMux :  out std_logic_vector(1 downto 0);
+      Con      :  out std_logic_vector(7 downto 0);
+      ConSel   :  out std_logic;
+      ALUOp    :  out std_logic_vector(5 downto 0);
+      En       :  out std_logic;
+      EnW      :  out std_logic;
+      WSel     :  out std_logic_vector(1 downto 0);
+      SelA     :  out std_logic_vector(4 downto 0);
+      SelB     :  out std_logic_vector(4 downto 0);
+      ISelect  :  out std_logic_vector(1 downto 0);
+      DBaseSelect :  out std_logic_vector(2 downto 0);
+      DOffSelect  :  out std_logic_vector(1 downto 0);
+      FlagMask    :  out std_logic_vector(7 downto 0)
     );
   end component;
 
@@ -99,7 +110,10 @@ begin
       RegB => RegBOut,
       SelA => SelA,
       SelB => SelB,
-      En => En
+      En => En,
+      EnW => '0',
+      Address => "0000000000000000",
+      WSel => "00"
     );
   control_unit : CUNIT
     port map (

@@ -2,7 +2,9 @@
 --
 --  Atmel AVR Register Array Test Bed
 --
---  This is the test bed for the register array
+--  This is the test bed for the register array. It tests the array by inputting
+--  values to the array and checking whether they were taken after the next rising
+--  edge.
 --
 --  Revision History:
 --     2017-01-31  Harrison Krowas     Initial revision.
@@ -13,6 +15,9 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.std_logic_arith.all;
 use ieee.numeric_std.all;
+use ieee.std_logic_textio.all;
+
+use std.textio.all;
 
 library opcodes;
 use opcodes.opcodes.all;
@@ -37,6 +42,9 @@ architecture reg_tb_arch of reg_tb is
   signal RegAOut  :  std_logic_vector(7 downto 0);       -- register bus A out
   signal RegBOut  :  std_logic_vector(7 downto 0);       -- register bus B out
 
+  signal RegAOut_test : std_logic_vector(7 downto 0);
+  signal RegBOut_test : std_logic_vector(7 downto 0);
+
   signal END_SIM : BOOLEAN := FALSE;
 
 
@@ -49,57 +57,40 @@ begin
       RegAOut => RegAOut,
       RegBOut => RegBOut
     );
-  process
-  begin
-    wait for 15 ns;
-    -- Access R0 and R0
-    IR <= opADC(15 downto 10) & "0000000000";
-    RegIn <= x"BF";
-    wait for 40 ns;
-    assert(std_match(RegAOut, x"BF"));    -- See if value was written.
-    -- try non-writing operation on R0
-    IR <= opCP(15 downto 10) & "0000000000";
-    RegIn <= x"37";
-    wait for 40 ns;
-    assert(std_match(RegAOut, x"BF"));    -- See if value is still the same.
-    -- See if we can still write to R0
-    IR <= opADC(15 downto 10) & "0000000000";
-    RegIn <= x"CD";
-    wait for 40 ns;
-    assert(std_match(RegAOut, x"CD"));   -- Test new value.
-    -- Write something to R1
-    IR <= opADC(15 downto 10) & "0000010000";
-    RegIn <= x"EE";
-    wait for 40 ns;
-    assert(std_match(RegAOut, x"EE"));    -- Test if value was taken by R1
-    IR <= opADC(15 downto 10) & "0000000000";
-    RegIn <= x"CD";
-    wait for 40 ns;
-    assert(std_match(RegAOut, x"CD"));    -- Test if value was taken by R0
-    -- Test immediate operand addressing
-    IR <= opSUBI(15 downto 12) & "000000000000";
-    RegIn <= x"BB";
-    wait for 40 ns;
-    assert(std_match(RegAOut, x"BB"));
-    IR <= opCP(15 downto 10) & "0100000000";
-    RegIn <= x"37";
-    wait for 40 ns;                     -- See if correct register was written to
-    assert(std_match(RegAOut, x"BB"));  --note that imm instructions are limited
-    -- Test B select                      to R16-R31.
-    IR <= opCP(15 downto 10) & "1000000000";
-    RegIn <= x"37";
-    wait for 40 ns;
-    assert(std_match(RegBOut, x"BB"));    -- See if B is selected properly
-    assert(std_match(RegAOut, x"CD"));
-    -- Setup R24 and R25 for word addressing
-    IR <= opADC(15 downto 10) & "0110000000";
-    RegIn <= x"EF";
-    wait for 40 ns;
-    IR <= opADC(15 downto 10) & "0110010000";
-    RegIn <= x"BE";
-    wait for 40 ns;
-    assert(std_match(RegAOut, x"BE"));
 
+
+  process
+    file test_file : text is in "test/reg_test.txt";
+    variable rline : line; -- This contains one line from the data
+
+    variable IR_file : std_logic_vector(15 downto 0);
+    variable RegIn_file : string(1 to 8);
+    variable RegOut_file : string(1 to 8);
+
+    variable IR_var : std_logic_vector(15 downto 0);
+    variable RegIn_var : std_logic_vector(7 downto 0);
+    variable RegAOut_var : std_logic_vector(7 downto 0);
+    variable RegBOut_var : std_logic_vector(7 downto 0);
+
+  begin
+    wait for 21 ns;
+    while not endfile(test_file) loop
+      -- Read one line into the test bench
+        readline(test_file, rline);
+
+        read(rline, IR_var);      -- Read in value from txt file
+        read(rline, RegIn_var);
+        read(rline, RegAOut_var);
+        read(rline, RegBOut_var);
+        IR <= IR_var;
+        RegIn <= RegIn_var;       -- Set input to register array
+        RegAOut_test <= RegAOut_var;
+        RegBOut_test <= RegBOut_var;
+        wait for 18 ns;       -- clock occurs during this wait
+        assert(std_match(RegAOut, RegAOut_test));    -- See if value was written to A.
+        assert(std_match(RegBOut, RegBOut_test));
+        wait for 2 ns;
+    end loop;
     END_SIM <= TRUE;
     wait;
   end process;
