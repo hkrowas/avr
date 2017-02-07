@@ -165,7 +165,11 @@ begin
     end if;
     if (std_match(IR, OpADIW)) then
       En <= '1';
-      ALUOp <= ALU_ADIW;
+      if (count = '0') then
+        ALUOp <= ALU_ADD;
+      else
+        ALUOp <= ALU_ADC;
+      end if;
       SelB <= IR(9) & IR(3 downto 0);
       FlagMask <= Z or C or N or V or S;
     end if;
@@ -317,7 +321,11 @@ begin
     end if;
     if (std_match(IR, OpSBIW)) then
       En <= '1';
-      ALUOp <= ALU_SBIW;
+      if (count = '0') then
+        ALUOp <= ALU_SUB;
+      else
+        ALUOp <= ALU_SBC;
+      end if;
       SelB <= IR(9) & IR(3 downto 0);
       FlagMask <= Z or C or N or V or S;
     end if;
