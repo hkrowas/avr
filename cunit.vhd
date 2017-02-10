@@ -142,9 +142,9 @@ architecture CUNIT_ARCH of CUNIT is
   constant ALU_CPC   :  std_logic_vector(5 downto 0) := "001101";
   constant ALU_CPI   :  std_logic_vector(5 downto 0) := ALU_CP;
   constant ALU_SUB   :  std_logic_vector(5 downto 0) := "000101";
-  constant ALU_DEC   :  std_logic_vector(5 downto 0) := ALU_SUB;
+  constant ALU_DEC   :  std_logic_vector(5 downto 0) := "010101";
   constant ALU_EOR   :  std_logic_vector(5 downto 0) := "011000";
-  constant ALU_INC   :  std_logic_vector(5 downto 0) := "100001";
+  constant ALU_INC   :  std_logic_vector(5 downto 0) := "010001";
   constant ALU_LSR   :  std_logic_vector(5 downto 0) := "100010";
   constant ALU_NEG   :  std_logic_vector(5 downto 0) := "100101";
   constant ALU_OR    :  std_logic_vector(5 downto 0) := "111000";
