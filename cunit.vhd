@@ -129,7 +129,7 @@ architecture CUNIT_ARCH of CUNIT is
   -- ALUOp  Constants
   constant ALU_ADC   :  std_logic_vector(5 downto 0) := "001001";
   constant ALU_ADD   :  std_logic_vector(5 downto 0) := "000001";
-  constant ALU_ADIW  :  std_logic_vector(5 downto 0) := ALU_ADD;
+  constant ALU_ADIW  :  std_logic_vector(5 downto 0) := "110001";
   constant ALU_AND   :  std_logic_vector(5 downto 0) := "100000";
   constant ALU_ANDI  :  std_logic_vector(5 downto 0) := ALU_AND;
   constant ALU_ASR   :  std_logic_vector(5 downto 0) := "000110";
@@ -152,7 +152,7 @@ architecture CUNIT_ARCH of CUNIT is
   constant ALU_ROR   :  std_logic_vector(5 downto 0) := "001010";
   constant ALU_SBC   :  std_logic_vector(5 downto 0) := "001101";
   constant ALU_SBCI  :  std_logic_vector(5 downto 0) := ALU_SBC;
-  constant ALU_SBIW  :  std_logic_vector(5 downto 0) := ALU_SUB;
+  constant ALU_SBIW  :  std_logic_vector(5 downto 0) := "110101";
   constant ALU_SUBI  :  std_logic_vector(5 downto 0) := ALU_SUB;
   constant ALU_SWAP  :  std_logic_vector(5 downto 0) := "000111";
 
@@ -223,7 +223,7 @@ begin
       if (count = "0") then
         ALUOp <= ALU_ADD;
       else
-        ALUOp <= ALU_ADC;
+        ALUOp <= "111001";
       end if;
       SelB <= IR(9) & IR(3 downto 0);
       FlagMask <= Z or C or N or V or S;
@@ -379,7 +379,7 @@ begin
       if (count = "0") then
         ALUOp <= ALU_SUB;
       else
-        ALUOp <= ALU_SBC;
+        ALUOp <= "111101";
       end if;
       SelB <= IR(9) & IR(3 downto 0);
       FlagMask <= Z or C or N or V or S;

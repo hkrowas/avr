@@ -129,9 +129,35 @@ start:
 	sbiw	r27:r26, 0x3F;
 
 ; Test subtract with carry operations for Z flag
+	bset	0			; Set C flag
+	ldi		r24, 0x3F	; setup sbc
+	ldi		r26, 0x3E	;
+	sbc		r24, r26    ; Should not change Z flag
 
+; Test additional add/sub operations
+	ldi		r24, 0xBF	; prepare for add
+	ldi		r26, 0xBF	;
+	add		r24, r26	; should set V flag
 
+	bset	0			; Set C flag
+	ldi		r24, 0xFE	;
+	ldi		r26, 0x01	;
+	adc		r24, r26	; should be 0
 
+	dec		r24			;
+	dec		r24			; test wrap around
+
+	ldi		r24, 0xFE	; 
+	inc		r24
+	inc		r24			; test wrap around
+
+	ldi		r27, 0xFF	;
+	ldi		r26, 0xFF	;
+	adiw	r27:r26, 0x3F; test large numbers and zero flag
+
+	ldi		r27, 0x00	;
+	ldi		r26, 0x0F	;
+	sbiw	r27:r26, 0x3;test sbiw where r27 is zero
 
     
     

@@ -190,7 +190,7 @@ begin
   process (OperandB, AluOp(5 downto 2), tempB, tempA, OperandA)
   begin
 	  
-		if (AluOp(4) = '1') then
+		if (AluOp(4) = '1' and AluOp(5) = '0') then
 			-- AluOp 4 is the INC/DEC instruction flag
 			--  therefore operandB needs to be 1 for INC
 			if(AluOp(2) = '1') then
@@ -202,7 +202,7 @@ begin
 			end if;
 		else
 		   for i in OperandB'range loop
-				if(AluOp(5) = '1') then
+				if(AluOp(5) = '1' and AluOp(4) = '0') then
 					tempB(i) <= OperandA(i) xor AluOp(2);
 				else
 					tempB(i) <= OperandB(i) xor AluOp(2);
@@ -210,7 +210,7 @@ begin
 			end loop;
 		end if;
 		
-		if (AluOp(5) = '1') then
+		if (AluOp(5) = '1' and AluOp(4) = '0') then
 			-- AluOp5 is the NEG command flag
 			tempA <= "00000000";
 		else
@@ -229,8 +229,9 @@ begin
   
   -- flags for Shift Rotate Block 
   flags(1)(0) <= temp_cout xor AluOp(2);								-- C Flag
-  flags(1)(1) <= (NOR_REDUCE(results(1)) and not (AluOp(3) and AluOp(2))) 
-					or (NOR_REDUCE(results(1)) and StatRegIn(1) and (AluOp(3) and AluOp(2))); 	-- Z Flag 
+  flags(1)(1) <= (NOR_REDUCE(results(1)) and not (AluOp(3) and AluOp(2)) and not (AluOp(5) and AluOp(4))) 
+					or (NOR_REDUCE(results(1)) and StatRegIn(1) and (AluOp(3) and AluOp(2)))
+					or (StatRegIn(1) and NOR_REDUCE(results(1)) and AluOp(5) and AluOp(4)) ; 	-- Z Flag 
   flags(1)(2) <= results(1)(results(1)'high);                  -- N flag 
   flags(1)(3) <= flags(1)(0) xor temp_co6 xor AluOp(2);       	-- V Flag 
   flags(1)(4) <= flags(1)(2) xor flags(1)(3); 						-- S Flag 
