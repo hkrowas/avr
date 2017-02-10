@@ -79,7 +79,6 @@ architecture REG_TEST_ARCH of REG_TEST is
       DataWr   :  out std_logic;
       PrePost  :  out std_logic;
       SP_EN    :  out std_logic;
-      RegInMux :  out std_logic_vector(1 downto 0);
       Con      :  out std_logic_vector(7 downto 0);
       ConSel   :  out std_logic;
       ALUOp    :  out std_logic_vector(5 downto 0);
