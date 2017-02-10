@@ -28,20 +28,104 @@ start:
 	sub		r24, r26	; this instruction should test subtraction, r26 = 0x01
 	sbc     r24, r26	; should subtract but also include the carry
 	sbc		r24, r26	; carry is now 0 and the subtraction should be a regular subtraction
-	sbiw	r26, 0x0F	; subtract immediate
-	subi	r26, 0x3F	; this instruction also sets the H flag
+	subi	r26, 0x3F	; test subtract immediate instruction
+	sbci	r26, 0x01	; 
+	sbci	r26, 0x0F	;
 
 ; test bitwise operations 
 	ldi		r24, 0x0F	; setup for the swap instruction
 	swap	r24			; should be 0xF0
-	
+	ldi		r24, 0x50	; setup for swap instruction
+	swap	r24			; should be 0x05
 
-; test logical operations
+	; test status register sets and clears
+	bset	7			; Set I flag
+	bclr	7			; Clear I flag
+	bset	6			; Set T flag
+	bclr	6			; Clear T flag
+	bclr	5			; Clear H flag
+	bset	5			; Set H flag
+	bclr	4			; Clear S flag
+	bset	4			; Set S flag
+	bset	3			; Set V flag
+	bclr	3			; Clear V flag
+	bclr	2			; Clear N flag
+	bset	2			; Set N flag
+	bset	1			; Set Z flag
+	bclr	1			; Clear Z flag
+	bset	0			; Set C flag
+	bclr	0			; Clear C flag
 
-
+	ldi		r26, 0x08	; Setup for BLD instruction
+	bst	    r26, 3		; set the T flag
+	bld		r26, 1		; set bit 1 in r26
+	bst		r26, 0		; clear the T flag
+	bld	    r26, 3		; clear bit 3 in r26
+	 
 ; test F-block operations
+	ldi		r24, 0x55	; setup for AND operation
+	ldi		r26, 0xAA	;
+	ldi		r28, 0x5A	;
+	and		r24, r26	; have no bits in common
+	and		r26, r28	; have four bits in common
 
+	andi	r28, 0x5A	; should be same value
+	andi	r28, 0xF5	; have two bits in common
+	andi	r28, 0x0F	; have nothing in common
+
+	ldi		r24, 0x0F	; setup for com
+	com		r24			; flip bits
+	ldi		r24, 0x53	; setup for com
+	com		r24			; flip bits
+
+	ldi		r24, 0x0F	; setup for xor
+	ldi		r26, 0xAF	; 
+	eor		r24, r26	; exclusive or
+
+	ldi		r24, 0x0F	; setup for or
+	ldi		r26, 0xF0	;
+	or		r24, r26	; or registers
+
+	ldi		r24, 0xA0	; setup for or
+	or		r26, r24	; or registers
 	
+	ori		r24, 0xAF	; or immediate
+	ori		r24, 0x00	; or immediate
+
+
+; test shift rotate operations
+	ldi		r24, 0x88	; setup for ASR
+	asr		r24			; shift right preserve high bit
+	asr		r24			; shift right again
+	ldi		r24, 0x01	; setup for asr
+	asr		r24			; shift out of low bit into carry
+
+	ldi		r24, 0x81	; setup for lsr
+	lsr		r24			;
+	lsr		r24			;
+
+	ldi		r24, 0x02	; setup for ror
+	ror		r24			; rotate
+	ror		r24			; rotate into carry
+	ror		r24			; 
+
+; test neg, inc, dec
+	ldi		r24, 0x01	; setup for neg
+	neg		r24			; should give 2's compliment
+	inc		r24			; increment value
+	dec		r24			; decrement value
+
+
+; test word instuctions
+	ldi		r26, 0xCF	; setup for adiw
+	adiw	r27:r26, 0x3F	; add immediate
+
+	ldi		r27, 0x02	; setup for sbiw
+	ldi		r26, 0xFF	; 
+	sbiw	r27:r26, 0x3F	;subtract immediate
+
+; Test subtract with carry operations for Z flag
+
 
 
 

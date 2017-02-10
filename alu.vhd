@@ -152,7 +152,8 @@ architecture ALU_ARCH of ALU is
         );
   end  component;
   
-  signal tempB : std_logic_vector(7 downto 0);    -- OperandB xor with sub/add
+  signal tempA : std_logic_vector(7 downto 0);    -- Operand A depending on instruction
+  signal tempB : std_logic_vector(7 downto 0);    -- Operand B depending on instruction
   signal tempC : std_logic;                       -- Carry flag xor with sub/add
   signal temp_cout: std_logic;						  -- Carry out signal
   signal temp_coh:  std_logic; 						  -- Half carry signal  
@@ -186,11 +187,26 @@ begin
   -- ALU Add/Sub Block 
   ---------------------------------------------------------------------
   -- generate the tempB signal by xor all bits by the add/sub signal in alu op 
-  process (OperandB, AluOp, tempB)
+  process (OperandB, AluOp, tempB, OperandA)
   begin
-	  for i in OperandB'range loop
-			tempB(i) <= OperandB(i) xor AluOp(2);
-	  end loop;
+	  
+		if (AluOp(4) = '1') then
+			-- AluOp 4 is the INC/DEC instruction flag
+			--  therefore operandB needs to be 1
+			tempB <= "00000001";
+		else
+		   for i in OperandB'range loop
+				tempB(i) <= OperandB(i) xor AluOp(2);
+			end loop;
+		end if;
+		
+		if (AluOp(5) = '1') then
+			-- AluOp5 is the NEG command flag
+			tempA <= "00000000";
+		else
+			tempA <= OperandA;
+		end if;
+	  
   end process;
   
   -- generate the tempC signal by xor the carry flag and the add/sub signal
@@ -199,7 +215,7 @@ begin
   
   -- Create a full adder subtractor using the Adder entity 
   --  Add/Sub changes the carry and half carry flags 
-  AddSub: Adder port map (OperandA, tempB, tempC, results(1), temp_cout, temp_coh, temp_co6);
+  AddSub: Adder port map (tempA, tempB, tempC, results(1), temp_cout, temp_coh, temp_co6);
   
   -- flags for Shift Rotate Block 
   flags(1)(0) <= temp_cout xor AluOp(2);								-- C Flag
