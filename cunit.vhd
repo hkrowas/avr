@@ -148,7 +148,6 @@ begin
     SelA <= "XXXXX";
     SelB <= "XXXXX";
     FlagMask <= "XXXXXXXX";
-    Count <= 'X';
     Con <= "XXXXXXXX";
     ConSel <= 'X';
     if (std_match(IR, OpADC)) then
@@ -383,7 +382,7 @@ begin
   -- This process controls the finite state machine for instruction decoding.
   process (clock)
   begin
-    if(rising_edge(clock)) then
+    if (clock = '1') then
       -- Counter used for multiclock instructions
       if (std_match(IR, OpSBIW) or std_match(IR, OpADIW)) then
         count <= not(count);
