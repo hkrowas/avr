@@ -124,6 +124,10 @@ start:
 	ldi		r26, 0xFF	; 
 	sbiw	r27:r26, 0x3F	;subtract immediate
 
+	ldi		r27, 0x00	; 
+	ldi		r26, 0x00	;
+	sbiw	r27:r26, 0x3F;
+
 ; Test subtract with carry operations for Z flag
 
 

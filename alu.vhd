@@ -152,19 +152,19 @@ architecture ALU_ARCH of ALU is
         );
   end  component;
   
-  signal tempA : std_logic_vector(7 downto 0);    -- Operand A depending on instruction
-  signal tempB : std_logic_vector(7 downto 0);    -- Operand B depending on instruction
-  signal tempC : std_logic;                       -- Carry flag xor with sub/add
-  signal temp_cout: std_logic;						  -- Carry out signal
-  signal temp_coh:  std_logic; 						  -- Half carry signal  
-  signal temp_co6 : std_logic;                    -- Carry out of bit 6 
+  signal tempA : std_logic_vector(7 downto 0);    	-- Operand A depending on instruction
+  signal tempB : std_logic_vector(7 downto 0);    	-- Operand B depending on instruction
+  signal tempC : std_logic;                       	-- Carry flag xor with sub/add
+  signal temp_cout: std_logic;						  	-- Carry out signal
+  signal temp_coh:  std_logic; 						  	-- Half carry signal  
+  signal temp_co6 : std_logic;             			-- Carry out of bit 6 
     
 begin
   ---------------------------------------------------------------------
   -- ALU F Block 
   ---------------------------------------------------------------------
   -- This for generates the F-block of the ALU using combinational logic 
-  process (results(0), AluOp, OperandA, OperandB)
+  process (results(0)(7), AluOp(5 downto 2), OperandA, OperandB)
   begin
 	  for i in  results(0)'range loop
         results(0)(i)  <=   (AluOp(2) and (not OperandA(i)) and  (not OperandB(i))) or
@@ -187,16 +187,26 @@ begin
   -- ALU Add/Sub Block 
   ---------------------------------------------------------------------
   -- generate the tempB signal by xor all bits by the add/sub signal in alu op 
-  process (OperandB, AluOp, tempB, OperandA)
+  process (OperandB, AluOp(5 downto 2), tempB, tempA, OperandA)
   begin
 	  
 		if (AluOp(4) = '1') then
 			-- AluOp 4 is the INC/DEC instruction flag
-			--  therefore operandB needs to be 1
-			tempB <= "00000001";
+			--  therefore operandB needs to be 1 for INC
+			if(AluOp(2) = '1') then
+				-- For DEC operation
+				tempB <= "11111110";
+			else
+				-- For INC operation
+				tempB <= "00000001";
+			end if;
 		else
 		   for i in OperandB'range loop
-				tempB(i) <= OperandB(i) xor AluOp(2);
+				if(AluOp(5) = '1') then
+					tempB(i) <= OperandA(i) xor AluOp(2);
+				else
+					tempB(i) <= OperandB(i) xor AluOp(2);
+				end if;
 			end loop;
 		end if;
 		
@@ -220,7 +230,7 @@ begin
   -- flags for Shift Rotate Block 
   flags(1)(0) <= temp_cout xor AluOp(2);								-- C Flag
   flags(1)(1) <= (NOR_REDUCE(results(1)) and not (AluOp(3) and AluOp(2))) 
-					or (StatRegIn(1) and (AluOp(3) and AluOp(2))); 	-- Z Flag 
+					or (NOR_REDUCE(results(1)) and StatRegIn(1) and (AluOp(3) and AluOp(2))); 	-- Z Flag 
   flags(1)(2) <= results(1)(results(1)'high);                  -- N flag 
   flags(1)(3) <= flags(1)(0) xor temp_co6 xor AluOp(2);       	-- V Flag 
   flags(1)(4) <= flags(1)(2) xor flags(1)(3); 						-- S Flag 
@@ -231,17 +241,17 @@ begin
   ---------------------------------------------------------------------
   -- ALU Shift/Rotate Block 
   ---------------------------------------------------------------------
-  process (results(2), OperandA)
+  process (OperandA, AluOp(3 downto 2))
   begin
 	  for i in 6 downto 0 loop
 			  results(2)(i)  <=   OperandA(i+1);
 	  end loop;
-  end process;
+	    
   -- take care of the high bit
-  results(2)(results(2)'high)  <=   (AluOp(2) and OperandA(OperandA'high)) or
-                                    (AluOp(3) and OperandA(0)) or
-                                    (AluOp(4) and '0');
-                      
+	  results(2)(7)  <=   	(AluOp(2) and OperandA(7)) or (AluOp(3) and StatRegIn(0));
+								 	
+  end process;
+                     
   -- flags for Shift Rotate Block 
   flags(2)(0) <= OperandA(0);                                -- C Flag 
   flags(2)(1) <= NOR_REDUCE(results(2));                     -- Z Flag 
@@ -255,7 +265,7 @@ begin
   ---------------------------------------------------------------------
   -- ALU Bitwise Operations Block 
   ---------------------------------------------------------------------
-  process(AluOp, StatRegIn, OperandA)
+  process(AluOp(5 downto 2), StatRegIn, OperandA, flags)
   begin
     if (std_match(AluOp(5 downto 2), "0001")) then
         -- SWAP nibbles of the operand 
@@ -294,10 +304,11 @@ begin
     if (std_match(AluOp(5 downto 2), "0000")) then
         -- BST
         -- T = Rr(b)
-		  results(3) <= (0 => flags(3)(6), others => '0');
-		  
-		   flags(3) <= (6 => OperandA(to_integer(unsigned(OperandB(2 downto 0)))), others => '0');
-       
+		  flags(3) <= (6 => OperandA(to_integer(unsigned(OperandB(2 downto 0)))), others => '0');
+		  results(3) <= "00000000";
+		  results(3)(0) <= flags(3)(6);
+		  --results(3) <= (0 => flags(3)(6), others => '0');
+
     end if;
     
   end process;
