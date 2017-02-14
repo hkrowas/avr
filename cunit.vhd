@@ -189,7 +189,7 @@ begin
   begin
     -- All opcodes. This section controls En and the flag mask, which are both
     -- specific to the instruction.
-    En <= '-';
+    En <= '0';
     PrePost <= '-';
     ALUOp <= "------";
     SelA <= "-----";
@@ -203,6 +203,7 @@ begin
     DOffSelect <= "--";
     WSel <= "--";
     DMux <= "00";
+    PC_en <= '1';
 
 ----------- ALU Operations------------------------------------------------
 
@@ -656,6 +657,14 @@ begin
       En <= '0';
     end if;
 
+------- Branches --------------------------------------------------------------
+    if (std_match(IR, OpJMP)) then
+      if (count = "00") then
+        PC_en <= '1';
+        SelPC <= Absolute;
+      if (count = "10") then
+        PC_en <=
+
 -------- This section controls the value of SelA and Con based on the opcode----
 
     -- Default values
@@ -722,6 +731,7 @@ begin
               IState <= WRITE_INSTRUCTION;
             end if;
           end if;
+
         when WORD_INSTRUCTION =>
           count <= "00";
           IState <= IDLE;
