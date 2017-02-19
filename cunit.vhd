@@ -23,6 +23,7 @@
 --    IR  -  Instruction register for instruction decoding
 --    SR  -  Status register for branching
 --    clock
+--    ProgDB - Program Data bus. For skip instructions.
 --
 --  Outputs:
 --    DataRd - Data read enable (active low)
@@ -43,6 +44,10 @@
 --    SelA  -  Register A select (to ALU)
 --    SelB  -  Register B select (to ALU)
 --    ISelect  -  Instruction access unit source select
+--    IR_en    -  Instruction register enable. (For loading next instruction)
+--    PC_en    -  Program counter enable.
+--    PC_load   -  If active, relative PC addressing. If not, absolute.
+--    SelPC    -  PC source select.
 --    DBaseSelect  -  Data access unit base select
 --    BOffSelect   -  Data access unit offset select
 --    FlagMask  -  SR mask. Set bits indicate that flag changes with instruction.
@@ -95,6 +100,7 @@ entity  CUNIT  is
         IR       :  in  opcode_word;
         SR       :  in  std_logic_vector(7 downto 0);
         clock    :  in  std_logic;
+        ProgDB   :  in  std_logic_vector(15 downto 0);
         DataRd   :  out std_logic;
         DataWr   :  out std_logic;
         PrePost  :  out std_logic;
@@ -108,7 +114,10 @@ entity  CUNIT  is
         WSel     :  out std_logic_vector(1 downto 0);
         SelA     :  out std_logic_vector(4 downto 0);
         SelB     :  out std_logic_vector(4 downto 0);
-        ISelect  :  out std_logic_vector(1 downto 0);
+        IR_en    :  buffer std_logic;
+        PC_en    :  out std_logic;
+        PC_load   :  out std_logic;
+        SelPC    :  out std_logic_vector(2 downto 0);
         DBaseSelect :  out std_logic_vector(2 downto 0);
         DOffSelect  :  out std_logic_vector(1 downto 0);
         FlagMask    :  out std_logic_vector(7 downto 0)
@@ -178,14 +187,16 @@ architecture CUNIT_ARCH of CUNIT is
     WRITE_INSTRUCTION,-- 2 Cycle write instruction
     STS_INSTRUCTION,  -- For STS
     LDS_INSTRUCTION,  -- For LDS
+    CALL_INSTRUCTION, -- Any CALL instruction
+    RET_INSTRUCTION,  -- Any RET instruction
+    SKIP_INSTRUCTION, -- For when a skip instruction takes a skip
     MEM_END           -- Last cycle of STS and LDS
   );
 
   signal IState  :  i_states;
 
 begin
-
-  process(IR, SR, clock, count)
+  process(IR, SR, clock, count, ProgDB)
   begin
     -- All opcodes. This section controls En and the flag mask, which are both
     -- specific to the instruction.
@@ -203,7 +214,10 @@ begin
     DOffSelect <= "--";
     WSel <= "--";
     DMux <= "00";
-    PC_en <= '1';
+    PC_en <= '1';       -- Default is to load in next instruction
+    IR_en <= '1';
+    PC_load <= '1';
+    SelPC <= PC_one;    -- Default is load next instruction
 
 ----------- ALU Operations------------------------------------------------
 
@@ -222,6 +236,7 @@ begin
     if (std_match(IR, OpADIW)) then
       En <= '1';
       if (count = "0") then
+        PC_en <= '0';
         ALUOp <= ALU_ADD;
       else
         ALUOp <= "111001";
@@ -378,6 +393,7 @@ begin
     if (std_match(IR, OpSBIW)) then
       En <= '1';
       if (count = "0") then
+        PC_en <= '0';
         ALUOp <= ALU_SUB;
       else
         ALUOp <= "111101";
@@ -409,6 +425,8 @@ begin
     if (std_match(IR, OpLDX)) then
       DMux <= "01";
       if (count = "00") then
+        PC_en <= '0';
+        IR_en <= '0';
         En <= '0';
       end if;
       if (count = "01") then
@@ -420,6 +438,8 @@ begin
     if (std_match(IR, OpLDXI)) then
       DMux <= "01";
       if (count = "00") then
+        PC_en <= '0';
+        IR_en <= '0';
         EnW <= '0';
         En <= '0';
       end if;
@@ -435,6 +455,8 @@ begin
     if (std_match(IR, OpLDXD)) then
       DMux <= "01";
       if (count = "00") then
+        PC_en <= '0';
+        IR_en <= '0';
         EnW <= '0';
       end if;
       if (count = "01") then
@@ -449,6 +471,8 @@ begin
     if (std_match(IR, OpLDYI)) then
       DMux <= "01";
       if (count = "00") then
+        PC_en <= '0';
+        IR_en <= '0';
         EnW <= '0';
       end if;
       if (count = "01") then
@@ -463,6 +487,8 @@ begin
     if (std_match(IR, OpLDYD)) then
       DMux <= "01";
       if (count = "00") then
+        PC_en <= '0';
+        IR_en <= '0';
         EnW <= '0';
       end if;
       if (count = "01") then
@@ -477,6 +503,8 @@ begin
     if (std_match(IR, OpLDZI)) then
       DMux <= "01";
       if (count = "00") then
+        IR_en <= '0';
+        PC_en <= '0';
         EnW <= '0';
       end if;
       if (count = "01") then
@@ -491,6 +519,8 @@ begin
     if (std_match(IR, OpLDZD)) then
       DMux <= "01";
       if (count = "00") then
+        IR_en <= '0';
+        PC_en <= '0';
         EnW <= '0';
       end if;
       if (count = "01") then
@@ -503,6 +533,10 @@ begin
       WSel <= ZReg(1 downto 0);
     end if;
     if (std_match(IR, OpLDDY)) then
+      if (count = "00") then
+        PC_en <= '0';
+        IR_en <= '0';
+      end if;
       DMux <= "01";
       En <= '1';
       DBaseSelect <= YReg;
@@ -510,6 +544,10 @@ begin
       PrePost <= '0';
     end if;
     if (std_match(IR, OpLDDZ)) then
+      if (count = "00") then
+        PC_en <= '0';
+        IR_en <= '0';
+      end if;
       DMux <= "01";
       En <= '1';
       DBaseSelect <= ZReg;
@@ -517,12 +555,31 @@ begin
       PrePost <= '0';
     end if;
     if (std_match(IR, OpLDS)) then
+      if (count = "00") then
+        SelPC <= PC_one;
+        PC_en <= '0';
+        IR_en <= '0';
+      end if;
+      if (count = "01") then
+        SelPC <= PC_one;
+        PC_en <= '1';
+        IR_en <= '0';
+      end if;
+      if (count = "10") then
+        SelPC <= PC_one;
+        PC_en <= '1';
+        IR_en <= '1';
+      end if;
       DMux <= "01";
       En <= '1';
       DBaseSelect <= IR_SEL;
       PrePost <= '1';
     end if;
     if (std_match(IR, OpSTX)) then
+      if (count = "00") then
+        PC_en <= '0';
+        IR_en <= '0';
+      end if;
       En <= '0';
       DBaseSelect <= XReg;
       PrePost <= '1';
@@ -530,6 +587,8 @@ begin
     if (std_match(IR, OpSTXI)) then
       if (count = "00") then
         EnW <= '0';
+        PC_en <= '0';
+        IR_en <= '0';
       end if;
       if (count = "01") then
         EnW <= '1';
@@ -543,6 +602,8 @@ begin
     if (std_match(IR, OpSTXD)) then
       if (count = "00") then
         EnW <= '0';
+        PC_en <= '0';
+        IR_en <= '0';
       end if;
       if (count = "01") then
         EnW <= '1';
@@ -555,6 +616,8 @@ begin
     end if;
     if (std_match(IR, OpSTYI)) then
       if (count = "00") then
+        PC_en <= '0';
+        IR_en <= '0';
         EnW <= '0';
       end if;
       if (count = "01") then
@@ -568,6 +631,8 @@ begin
     end if;
     if (std_match(IR, OpSTYD)) then
       if (count = "00") then
+        PC_en <= '0';
+        IR_en <= '0';
         EnW <= '0';
       end if;
       if (count = "01") then
@@ -581,6 +646,8 @@ begin
     end if;
     if (std_match(IR, OpSTZI)) then
       if (count = "00") then
+        PC_en <= '0';
+        IR_en <= '0';
         EnW <= '0';
       end if;
       if (count = "01") then
@@ -594,6 +661,8 @@ begin
     end if;
     if (std_match(IR, OpSTZD)) then
       if (count = "00") then
+        PC_en <= '0';
+        IR_en <= '0';
         EnW <= '0';
       end if;
       if (count = "01") then
@@ -606,6 +675,10 @@ begin
       WSel <= ZReg(1 downto 0);
     end if;
     if (std_match(IR, OpPOP)) then
+      if (count = "00") then
+        PC_en <= '0';
+        IR_en <= '0';
+      end if;
       DMux <= "01";
       EnW <= '0';
       En <= '0';
@@ -619,6 +692,10 @@ begin
       end if;
     end if;
     if (std_match(IR, OpPUSH)) then
+      if (count = "00") then
+        PC_en <= '0';
+        IR_en <= '0';
+      end if;
       EnW <= '0';
       En <= '0';
       DBaseSelect <= SP_SEL;
@@ -631,6 +708,21 @@ begin
     end if;
     -- Immediate Memory Instructions
     if (std_match(IR, OpSTS)) then
+      if (count = "00") then
+        SelPC <= PC_one;
+        PC_en <= '0';
+        IR_en <= '0';
+      end if;
+      if (count = "01") then
+        SelPC <= PC_one;
+        PC_en <= '1';
+        IR_en <= '0';
+      end if;
+      if (count = "10") then
+        SelPC <= PC_one;
+        PC_en <= '1';
+        IR_en <= '1';
+      end if;
       PrePost <= '1';
       DBaseSelect <= IR_SEL;
       En <= '0';
@@ -645,12 +737,20 @@ begin
       En <= '1';
     end if;
     if (std_match(IR, OpSTDY)) then
+      if (count = "00") then
+        PC_en <= '0';
+        IR_en <= '0';
+      end if;
       PrePost <= '0';
       DBaseSelect <= YReg;
       DOffSelect <= const;
       En <= '0';
     end if;
     if (std_match(IR, OpSTDZ)) then
+      if (count = "00") then
+        PC_en <= '0';
+        IR_en <= '0';
+      end if;
       PrePost <= '0';
       DBaseSelect <= ZReg;
       DOffSelect <= const;
@@ -659,11 +759,261 @@ begin
 
 ------- Branches --------------------------------------------------------------
     if (std_match(IR, OpJMP)) then
-      if (count = "00") then
-        PC_en <= '1';
-        SelPC <= Absolute;
+      PC_load <= '1';
+      if (count = "00" or count = "01") then
+        SelPC <= PC_one;
+        PC_en <= '0';
+        IR_en <= '0';
+      end if;
       if (count = "10") then
-        PC_en <=
+        SelPC <= PC_absolute;
+        PC_en <= '1';
+        IR_en <= '1';
+      end if;
+    end if;
+    if (std_match(IR, OpRJMP)) then
+      SelPC <= PC_rel;
+      PC_load <= '1';
+      if (count = "00") then
+        PC_en <= '0';
+        IR_en <= '0';
+      else
+        PC_en <= '1';
+        IR_en <= '1';
+      end if;
+    end if;
+    if (std_match(IR, OpIJMP)) then
+      SelPC <= PC_Z;
+      PC_load <= '0';
+      if (count = "00") then
+        PC_en <= '0';
+        IR_en <= '0';
+      else
+        PC_en <= '1';
+        IR_en <= '1';
+      end if;
+    end if;
+    if (std_match(IR, OpCALL)) then
+      PrePost <= '1';
+      DBaseSelect <= SP_SEL;
+      DOffSelect <= neg_one;
+      if (count = "00") then
+        SelPC <= PC_one;
+        PC_load <= '1';
+        PC_en <= '1';
+        IR_en <= '0';
+      end if;
+      if (count = "01") then
+        SelPC <= PC_one;
+        PC_load <= '1';
+        PC_en <= '1';
+        SP_en <= '0';
+        IR_en <= '0';
+      end if;
+      if (count = "10") then
+        SelPC <= PC_one;
+        PC_load <= '1';
+        PC_en <= '0';
+        SP_en <= '1';
+        IR_en <= '0';
+      end if;
+      if (count = "11") then
+        SelPC <= PC_absolute;
+        PC_load <= '0';
+        PC_en <= '1';
+        SP_en <= '1';
+        IR_en <= '1';
+      end if;
+    end if;
+    if (std_match(IR, OpRCALL)) then
+      SelPC <= PC_rel;
+      PC_load <= '1';
+      DBaseSelect <= SP_SEL;
+      DOffSelect <= neg_one;
+      if (count = "00") then
+        SelPC <= PC_one;
+        PC_en <= '1';
+        SP_en <= '0';
+        IR_en <= '0';
+      end if;
+      if (count = "01") then
+        SP_en <= '1';
+        PC_en <= '0';
+        IR_en <= '0';
+      end if;
+      if (count = "10") then
+        SP_en <= '1';
+        PC_en <= '1';
+        IR_en <= '1';
+      end if;
+    end if;
+    if (std_match(IR, OpICALL)) then
+      SelPC <= PC_Z;
+      DBaseSelect <= SP_SEL;
+      DOffSelect <= neg_one;
+      if (count = "00") then
+        PC_load <= '1';
+        SelPC <= PC_one;
+        PC_en <= '1';
+        IR_en <= '0';
+        SP_en <= '0';
+      end if;
+      if (count = "01") then
+        PC_load <= '0';
+        SP_en <= '1';
+        IR_en <= '0';
+        PC_en <= '0';
+      end if;
+      if (count = "10") then
+        PC_load <= '0';
+        SP_en <= '1';
+        IR_en <= '1';
+        PC_en <= '1';
+      end if;
+    end if;
+    if (std_match(IR, OpRET)) then
+      DBaseSelect <= SP_SEL;
+      DOffSelect <= one;
+      PrePost <= '0';
+      PC_load <= '0';
+      if (count = "00") theN
+        PC_en <= '0';
+        SP_en <= '0';
+        IR_en <= '0';
+      end if;
+      if (count = "01") then
+        SelPC <= SP_bot;
+        PC_en <= '1';
+        SP_en <= '1';
+        IR_en <= '0';
+      end if;
+      if (count = "10") then
+        SelPC <= SP_top;
+        PC_en <= '1';
+        SP_en <= '1';
+        IR_en <= '0';
+      end if;
+      if (count = "11") then
+        IR_en <= '1';
+        PC_en <= '0';
+        SP_en <= '0';
+      end if;
+    end if;
+    if (std_match(IR, OpRETI)) then
+      DBaseSelect <= SP_SEL;
+      DOffSelect <= one;
+      PrePost <= '0';
+      PC_load <= '0';
+      if (count = "00") theN
+        PC_en <= '0';
+        SP_en <= '0';
+        IR_en <= '0';
+      end if;
+      if (count = "01") then
+        SelPC <= SP_bot;
+        PC_en <= '1';
+        SP_en <= '1';
+        IR_en <= '0';
+      end if;
+      if (count = "10") then
+        SelPC <= SP_top;
+        PC_en <= '1';
+        SP_en <= '1';
+        IR_en <= '0';
+      end if;
+      if (count = "11") then
+        IR_en <= '1';
+        PC_en <= '0';
+        SP_en <= '0';
+      end if;
+    end if;
+    if (std_match(IR, OpBRBC)) then
+      if (SR(conv_integer(IR(2 downto 0))) = '0') then
+        if (count = "00") then
+          SelPC <= PC_one;
+          PC_en <= '1';
+          IR_en <= '0';
+        else
+          SelPC <= PC_con;
+          IR_en <= '1';
+          PC_en <= '1';
+        end if;
+      else
+        SelPC <= PC_one;
+        PC_en <= '1';
+      end if;
+    end if;
+    if (std_match(IR, OpBRBC)) then
+      if (SR(conv_integer(IR(2 downto 0))) = '0') then
+        if (count = "00") then
+          SelPC <= PC_one;
+          PC_en <= '1';
+          IR_en <= '0';
+        else
+          SelPC <= PC_con;
+          IR_en <= '1';
+          PC_en <= '1';
+        end if;
+      else
+        SelPC <= PC_one;
+        PC_en <= '1';
+      end if;
+    end if;
+    if (std_match(IR, OpCPSE)) then
+      SelPC <= PC_one;
+      ALUOp <= ALU_SUB;
+      PC_en <= '1';
+      if (count = "00") then
+        IR_en <= SR(1);
+      end if;
+      if (count = "01") then
+        if (not(std_match(ProgDB, OpCALL) or std_match(ProgDB, OpJMP)
+                or std_match(ProgDB, OpSTS) or std_match(ProgDB, OpLDS))) then
+          IR_en <= '1';
+        else
+          IR_en <= '0';
+        end if;
+      else
+        IR_en <= '1';
+      end if;
+    end if;
+    if (std_match(IR, OpSBRC)) then
+      ALUOp <= ALU_BST;
+      SelPC <= PC_one;
+      PC_en <= '1';
+      if (count = "00") then
+        IR_en <= not SR(6);
+      end if;
+      if (count = "01") then
+        if (not(std_match(ProgDB, OpCALL) or std_match(ProgDB, OpJMP)
+                or std_match(ProgDB, OpSTS) or std_match(ProgDB, OpLDS))) then
+          IR_en <= '1';
+        else
+          IR_en <= '0';
+        end if;
+      else
+        IR_en <= '1';
+      end if;
+    end if;
+    if (std_match(IR, OpSBRS)) then
+      ALUOp <= ALU_BST;
+      SelPC <= PC_one;
+      ALUOp <= ALU_SUB;
+      PC_en <= '1';
+      if (count = "00") then
+        IR_en <= SR(6);
+      end if;
+      if (count = "01") then
+        if (not(std_match(ProgDB, OpCALL) or std_match(ProgDB, OpJMP)
+                or std_match(ProgDB, OpSTS) or std_match(ProgDB, OpLDS))) then
+          IR_en <= '1';
+        else
+          IR_en <= '0';
+        end if;
+      else
+        IR_en <= '1';
+      end if;
+    end if;
 
 -------- This section controls the value of SelA and Con based on the opcode----
 
@@ -679,7 +1029,7 @@ begin
         Con <= "00" & IR(7 downto 6) & IR(3 downto 0);
         SelA <= "11" & IR(5 downto 4) & "0";
       else
-        Con <= "0000000" & SR(0);
+        Con <= "00000000";
         SelA <= "11" & IR(5 downto 4) & "1";
       end if;
     end if;
@@ -690,6 +1040,11 @@ begin
       ConSel <= '1';
       SelA <= "1" & IR(7 downto 4);
       Con <= IR(11 downto 8) & IR(3 downto 0);
+    end if;
+
+    if (std_match(IR, OpBLD) or std_match(IR, OpBST)) then
+      ConSel <= '1';
+      Con <= "00000" & IR(2 downto 0);
     end if;
 
   end process;
@@ -731,6 +1086,36 @@ begin
               IState <= WRITE_INSTRUCTION;
             end if;
           end if;
+          if (std_match(IR, OpCALL)
+              or std_match(IR, OpRCALL) or std_match(IR, OpICALL)) then
+            count <= "01";
+            DataWr <= '0';
+            IState <= CALL_INSTRUCTION;
+          end if;
+          if (std_match(IR, OpRET) or std_match(IR, OpRETI)) then
+            count <= "01";
+            DataRd <= '0';
+            IState <= RET_INSTRUCTION;
+          end if;
+          if (std_match(IR, OpBRBC)) then
+            if (SR(conv_integer(IR(2 downto 0))) = '0') then
+              count <= "01";
+              IState <= MEM_END;    -- Goes back to normal
+            end if;
+          end if;
+          if (std_match(IR, OpBRBS)) then
+            if (SR(conv_integer(IR(2 downto 0))) = '1') then
+              count <= "01";
+              IState <= MEM_END;    -- Goes back to normal
+            end if;
+          end if;
+          if (std_match(IR, OpCPSE) or std_match(IR, OpSBRC) or std_match(IR, OpSBRS)) then
+            if (IR_en = '0') then
+              count <= "01";
+              IState <= SKIP_INSTRUCTION;
+            end if;
+            -- If not, then just normal instruction
+          end if;
 
         when WORD_INSTRUCTION =>
           count <= "00";
@@ -756,6 +1141,39 @@ begin
           DataWr <= '1';
           DataRd <= '1';
           IState <= IDLE;
+        when CALL_INSTRUCTION =>
+          if (count <= "01") then
+            count <= "10";
+            DataWr <= '0';
+          else
+            DataWr <= '1';
+            if (std_match(IR, OpCALL)) then
+              count <= "11";
+            else
+              count <= "00";
+              IState <= IDLE;
+            end if;
+          end if;
+        when RET_INSTRUCTION =>
+          if (count = "01") then
+            count <= "10";
+            DataRd <= '0';
+          end if;
+          if (count = "10") then
+            count <= "11";
+            DataRd <= '1';
+          end if;
+          if (count = "11") then
+            count <= "00";
+            IState <= IDLE;
+          end if;
+        when SKIP_INSTRUCTION =>
+          if (IR_en = '0') then
+            count <= "10";
+          else
+            count <= "00";
+            IState <= IDLE;
+          end if;
         when others =>
           count <= "00";
           DataRd <= '1';
