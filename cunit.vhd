@@ -48,6 +48,8 @@
 --    PC_en    -  Program counter enable.
 --    PC_load   -  If active, relative PC addressing. If not, absolute.
 --    SelPC    -  PC source select.
+--    DataOutSel - Data Out select.
+--    IR_buf     - Always gets ProgDB regardless of IR_en.
 --    DBaseSelect  -  Data access unit base select
 --    BOffSelect   -  Data access unit offset select
 --    FlagMask  -  SR mask. Set bits indicate that flag changes with instruction.
@@ -118,8 +120,11 @@ entity  CUNIT  is
         PC_en    :  out std_logic;
         PC_load   :  out std_logic;
         SelPC    :  out std_logic_vector(2 downto 0);
+        IR_Buf   : out std_logic_vector(15 downto 0);
         DBaseSelect :  out std_logic_vector(2 downto 0);
         DOffSelect  :  out std_logic_vector(1 downto 0);
+        ISelect :  out std_logic_vector(2 downto 0);
+        DataOutSel  :  out std_logic_vector(1 downto 0);
         FlagMask    :  out std_logic_vector(7 downto 0)
     );
 end  CUNIT;
@@ -177,7 +182,23 @@ architecture CUNIT_ARCH of CUNIT is
   constant neg_one : std_logic_vector(1 downto 0) := "01";
   constant one : std_logic_vector(1 downto 0) := "10";
 
+  -- DataOutSel Constants
+  constant DataOut_RegA : std_logic_vector(1 downto 0) := "00";
+  constant DataOut_PC_high : std_logic_vector(1 downto 0) := "01";
+  constant DataOut_PC_low : std_logic_vector(1 downto 0) := "10";
+
+  -- Instruction Source Select Constants
+  constant PC_one : std_logic_vector(2 downto 0) := "000";
+  constant PC_absolute : std_logic_vector(2 downto 0) := "001";
+  constant PC_rel : std_logic_vector(2 downto 0) := "010";
+  constant PC_z : std_logic_vector(2 downto 0) := "011";
+  constant PC_con : std_logic_vector(2 downto 0) := "100";
+  constant PC_top : std_logic_vector(2 downto 0) := "101";
+  constant PC_bot : std_logic_vector(2 downto 0) := "110";
+
+
   signal count  :  std_logic_vector(1 downto 0);       -- counter for 2 clock instructions
+  signal IR_buf_en : std_logic;
 
   -- Type for Instruction Decoding State machine
   type i_states is (
@@ -200,6 +221,7 @@ begin
   begin
     -- All opcodes. This section controls En and the flag mask, which are both
     -- specific to the instruction.
+    IR_buf_en <= '0';
     En <= '0';
     PrePost <= '-';
     ALUOp <= "------";
@@ -218,7 +240,7 @@ begin
     IR_en <= '1';
     PC_load <= '1';
     SelPC <= PC_one;    -- Default is load next instruction
-
+    DataOutSel <= DataOut_RegA;
 ----------- ALU Operations------------------------------------------------
 
     if (std_match(IR, OpADC)) then
@@ -799,6 +821,7 @@ begin
       DOffSelect <= neg_one;
       if (count = "00") then
         SelPC <= PC_one;
+        IR_buf_en <= '1';
         PC_load <= '1';
         PC_en <= '1';
         IR_en <= '0';
@@ -811,6 +834,7 @@ begin
         IR_en <= '0';
       end if;
       if (count = "10") then
+        DataOutSel <= DataOut_PC_high;
         SelPC <= PC_one;
         PC_load <= '1';
         PC_en <= '0';
@@ -818,6 +842,7 @@ begin
         IR_en <= '0';
       end if;
       if (count = "11") then
+        DataOutSel <= DataOut_PC_low;
         SelPC <= PC_absolute;
         PC_load <= '0';
         PC_en <= '1';
@@ -826,32 +851,34 @@ begin
       end if;
     end if;
     if (std_match(IR, OpRCALL)) then
-      SelPC <= PC_rel;
       PC_load <= '1';
       DBaseSelect <= SP_SEL;
       DOffSelect <= neg_one;
       if (count = "00") then
+        IR_buf_en <= '1';
         SelPC <= PC_one;
         PC_en <= '1';
         SP_en <= '0';
         IR_en <= '0';
       end if;
       if (count = "01") then
+        SelPC <= PC_one;
         SP_en <= '1';
         PC_en <= '0';
         IR_en <= '0';
       end if;
       if (count = "10") then
+        SelPC <= PC_rel;
         SP_en <= '1';
         PC_en <= '1';
         IR_en <= '1';
       end if;
     end if;
     if (std_match(IR, OpICALL)) then
-      SelPC <= PC_Z;
       DBaseSelect <= SP_SEL;
       DOffSelect <= neg_one;
       if (count = "00") then
+        IR_buf_en <= '1';
         PC_load <= '1';
         SelPC <= PC_one;
         PC_en <= '1';
@@ -859,19 +886,21 @@ begin
         SP_en <= '0';
       end if;
       if (count = "01") then
-        PC_load <= '0';
+        SelPC <= PC_one;
+        PC_load <= '1';
         SP_en <= '1';
         IR_en <= '0';
         PC_en <= '0';
       end if;
       if (count = "10") then
+        SelPC <= PC_Z;
         PC_load <= '0';
         SP_en <= '1';
         IR_en <= '1';
         PC_en <= '1';
       end if;
     end if;
-    if (std_match(IR, OpRET)) then
+    if (std_match(IR, OpRET) or std_match(IR, OpRETI)) then
       DBaseSelect <= SP_SEL;
       DOffSelect <= one;
       PrePost <= '0';
@@ -882,49 +911,21 @@ begin
         IR_en <= '0';
       end if;
       if (count = "01") then
-        SelPC <= SP_bot;
-        PC_en <= '1';
-        SP_en <= '1';
+        PC_en <= '0';
+        SP_en <= '0';
         IR_en <= '0';
       end if;
       if (count = "10") then
-        SelPC <= SP_top;
+        SelPC <= PC_bot;
         PC_en <= '1';
         SP_en <= '1';
         IR_en <= '0';
       end if;
       if (count = "11") then
+        SelPC <= PC_top;
         IR_en <= '1';
-        PC_en <= '0';
-        SP_en <= '0';
-      end if;
-    end if;
-    if (std_match(IR, OpRETI)) then
-      DBaseSelect <= SP_SEL;
-      DOffSelect <= one;
-      PrePost <= '0';
-      PC_load <= '0';
-      if (count = "00") theN
-        PC_en <= '0';
-        SP_en <= '0';
-        IR_en <= '0';
-      end if;
-      if (count = "01") then
-        SelPC <= SP_bot;
         PC_en <= '1';
         SP_en <= '1';
-        IR_en <= '0';
-      end if;
-      if (count = "10") then
-        SelPC <= SP_top;
-        PC_en <= '1';
-        SP_en <= '1';
-        IR_en <= '0';
-      end if;
-      if (count = "11") then
-        IR_en <= '1';
-        PC_en <= '0';
-        SP_en <= '0';
       end if;
     end if;
     if (std_match(IR, OpBRBC)) then
@@ -1089,12 +1090,13 @@ begin
           if (std_match(IR, OpCALL)
               or std_match(IR, OpRCALL) or std_match(IR, OpICALL)) then
             count <= "01";
-            DataWr <= '0';
+            if (std_match(IR, OpRCALL) or std_match(IR, OpICALL)) then
+              DataWr <= '0';
+            end if;
             IState <= CALL_INSTRUCTION;
           end if;
           if (std_match(IR, OpRET) or std_match(IR, OpRETI)) then
             count <= "01";
-            DataRd <= '0';
             IState <= RET_INSTRUCTION;
           end if;
           if (std_match(IR, OpBRBC)) then
@@ -1143,16 +1145,20 @@ begin
           IState <= IDLE;
         when CALL_INSTRUCTION =>
           if (count <= "01") then
-            count <= "10";
             DataWr <= '0';
-          else
-            DataWr <= '1';
-            if (std_match(IR, OpCALL)) then
-              count <= "11";
-            else
+            count <= "10";
+          elsif (count <= "10") then
+            if (std_match(IR, OpRCALL) or std_match(IR, OpICALL)) then
+              DataWr <= '1';
               count <= "00";
               IState <= IDLE;
+            else
+              DataWr <= '0';
+              count <= "11";
             end if;
+          else
+            DataWr <= '1';
+            IState <= IDLE;
           end if;
         when RET_INSTRUCTION =>
           if (count = "01") then
@@ -1161,7 +1167,7 @@ begin
           end if;
           if (count = "10") then
             count <= "11";
-            DataRd <= '1';
+            DataRd <= '0';
           end if;
           if (count = "11") then
             count <= "00";
@@ -1180,6 +1186,13 @@ begin
           DataWr <= '1';
           IState <= IDLE;
       end case;
+    end if;
+  end process;
+
+  process(clock)
+  begin
+    if (clock = '1' and IR_buf_en = '1') then
+      IR_buf <= ProgDB;
     end if;
   end process;
 end CUNIT_ARCH;

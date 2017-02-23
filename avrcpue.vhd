@@ -166,6 +166,7 @@ architecture AVR_CPU_ARCH of AVR_CPU is
         SelPC    :  out std_logic_vector(2 downto 0);
         DBaseSelect :  out std_logic_vector(2 downto 0);
         DOffSelect  :  out std_logic_vector(1 downto 0);
+        DataOutSel  :  out std_logic_vector(1 downto 0);
         FlagMask    :  out std_logic_vector(7 downto 0)
     );
   end component;
@@ -212,7 +213,16 @@ architecture AVR_CPU_ARCH of AVR_CPU is
 
   signal Result : std_logic_vector(7 downto 0);
 
+  signal DataOutSel  :  std_logic_vector(1 downto 0);
+  signal RegA  :  std_logic_vector(7 downto 0);
+  signal PC_high  :  std_logic_vector(7 downto 0);
+  signal PC_low  :  std_logic_vector(7 downto 0);
+  signal PC  :  std_logic_vector(15 downto 0);
+
 begin
+  dataWr <= DataWr_Buffer;
+  PC_high <= PC(15 downto 8);
+  PC_low <= PC(7 downto 0);
   data_unit : DUNIT
     port map (
       clock => clock,
@@ -253,7 +263,7 @@ begin
       SelA => SelA,
       SelB => SelB,
       Address => Address,
-      RegA => DBBuffer,
+      RegA => RegA,
       RegB => RegB,
       XReg => XReg,
       YReg => YReg,
@@ -276,7 +286,7 @@ begin
       clock => clock,
       ProgDB => ProgDB,
       DataRd => DataRd,
-      DataWr => DataWr,
+      DataWr => DataWr_Buffer,
       PrePost => PrePost,
       SP_EN => SP_en,
       Con => Con,
@@ -294,6 +304,7 @@ begin
       SelPC => SelPC,
       DBaseSelect => DBaseSelect,
       DOffSelect => DOffSelect,
+      DataOutSel => DataOutSel,
       FlagMask => FlagMask
     );
 
@@ -312,6 +323,12 @@ begin
       clock => clock,
       IROut => IR_out
     );
+
+    with DataOutSel select DBBuffer <=
+      RegA  when  "00",
+      PC_high when "01",
+      PC_low when  "10",
+      RegA when others;
 
     with DataWr_buffer select DataDB <=
       "ZZZZZZZZ" when '1',
