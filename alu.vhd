@@ -266,7 +266,7 @@ begin
   ---------------------------------------------------------------------
   -- ALU Bitwise Operations Block 
   ---------------------------------------------------------------------
-  process(AluOp(5 downto 2), StatRegIn, OperandA, flags)
+  process(AluOp(5 downto 2), StatRegIn, OperandA, flags, OperandB)
   begin
     if (std_match(AluOp(5 downto 2), "0001")) then
         -- SWAP nibbles of the operand 
@@ -280,7 +280,7 @@ begin
         -- BLD 
         -- Rd(b) = T
 		  results(3) <= OperandA;
-        results(3)(to_integer(unsigned(OperandB(2 downto 0)))) <= StatRegIn(6);
+      results(3)(to_integer(unsigned(OperandB(2 downto 0)))) <= StatRegIn(6);
 
         -- no flags are changed in this operation
 		  flags(3) <= "00000000";

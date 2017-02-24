@@ -258,8 +258,12 @@ begin
     end if;
     if (std_match(IR, OpADIW)) then
       En <= '1';
+<<<<<<< HEAD
       if (count = "0") then
         PC_en <= '0';
+=======
+      if (count = "00") then
+>>>>>>> a7ce167... Added iunit
         ALUOp <= ALU_ADD;
       else
         ALUOp <= "111001";
@@ -415,8 +419,12 @@ begin
     end if;
     if (std_match(IR, OpSBIW)) then
       En <= '1';
+<<<<<<< HEAD
       if (count = "0") then
         PC_en <= '0';
+=======
+      if (count = "00") then
+>>>>>>> a7ce167... Added iunit
         ALUOp <= ALU_SUB;
       else
         ALUOp <= "111101";
