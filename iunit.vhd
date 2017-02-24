@@ -6,6 +6,7 @@
 --
 --  Revision History:
 --     2016-01-24     Initial Revision    Harrison Krowas
+--     2017-02-23     Wrote HDL           Torkom Pailevanian
 --
 ----------------------------------------------------------------------------
 --
@@ -15,9 +16,15 @@
 --  The instruction access unit for the AVR.
 --
 --  Inputs:
+--    clock -  clock for the entity 
+--    load  -  load signal from cunit fot direct/relative addressing
+--    PC_en -  PC enable signal 
 --    IR    -  Instruction register for direct addressing
---    Sel   -  Source select. Also controls direct addressing
+--    Sel   -  Source select
 --    ZReg  -  Z register
+--    ProgDB - Program Data bus 
+--    PC    -  Program counter 
+--    ProgAB - Program address bus
 --
 --  Outputs:
 --    IABus   - Instruction address bus
