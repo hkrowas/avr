@@ -110,7 +110,9 @@ begin
 
   process(clock)
   begin
-    IR_delay <= ProgDB;
+    if (clock = '1') then
+      IR_delay <= ProgDB;
+    end if;
   end process;
 
 end DUNIT_ARCH;

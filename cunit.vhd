@@ -241,6 +241,7 @@ begin
     PC_load <= '1';
     SelPC <= PC_one;    -- Default is load next instruction
     DataOutSel <= DataOut_RegA;
+
 ----------- ALU Operations------------------------------------------------
 
     if (std_match(IR, OpADC)) then
