@@ -71,6 +71,7 @@ architecture AVR_CPU_ARCH of AVR_CPU is
         clock  :  in  std_logic;                    -- Clock for the Instruction Access Unit
         load   :  in  std_logic;                    -- Control for direct/relative addressing
         PC_en  :  in  std_logic;                    -- Enable signal for PC
+        Reset  :  in  std_logic;                    -- System Reset 
         IR     :  in  std_logic_vector(15 downto 0);-- Input from IR
         Sel    :  in  std_logic_vector( 2 downto 0);-- Select signal for source mux
         ZReg   :  in  std_logic_vector(15 downto 0);-- Z register from register array
@@ -158,7 +159,6 @@ architecture AVR_CPU_ARCH of AVR_CPU is
         IR       :  in  opcode_word;
         SR       :  in  std_logic_vector(7 downto 0);
         clock    :  in  std_logic;
-        SReg     :  in  std_logic_vector(7 downto 0);
         ProgDB   :  in  std_logic_vector(15 downto 0);
         DataRd   :  out std_logic;
         DataWr   :  out std_logic;
@@ -245,6 +245,7 @@ begin
       clock => clock,
       load => PC_load,
       PC_en => PC_en,
+      Reset => Reset,
       IR => IR_out,
       Sel => SelPC,
       ZReg => ZReg,

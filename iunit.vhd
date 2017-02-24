@@ -19,6 +19,7 @@
 --    clock -  clock for the entity 
 --    load  -  load signal from cunit fot direct/relative addressing
 --    PC_en -  PC enable signal 
+--    Reset -  System Reset 
 --    IR    -  Instruction register for direct addressing
 --    Sel   -  Source select
 --    ZReg  -  Z register
@@ -44,11 +45,12 @@ entity  IUNIT  is
         clock  :  in  std_logic;                    -- Clock for the Instruction Access Unit
         load   :  in  std_logic;                    -- Control for direct/relative addressing 
         PC_en  :  in  std_logic;                    -- Enable signal for PC 
+        Reset  :  in  std_logic;                    -- System Reset 
         IR     :  in  std_logic_vector(15 downto 0);-- Input from IR 
         Sel    :  in  std_logic_vector( 2 downto 0);-- Select signal for source mux 
         ZReg   :  in  std_logic_vector(15 downto 0);-- Z register from register array 
         ProgDB :  in  std_logic_vector(15 downto 0);-- Program data bus 
-		  DataDB :  in  std_logic_vector( 7 downto 0);-- Data data bus
+		DataDB :  in  std_logic_vector( 7 downto 0);-- Data data bus
         PC     :  buffer std_logic_vector(15 downto 0); -- Program counter register 
         ProgAB :  out std_logic_vector(15 downto 0) -- Program address bus 
     );
@@ -65,23 +67,22 @@ begin
 process(clock)
   begin
     if (rising_edge(clock)) then
-		for i in 7 downto 0 loop
-        if (PC_en = '1') then 
-            -- If the enable is high then update the program counter 
-            pc_temp(i) <= PC(i) and load;
+        if (Reset = '0') then
+            PC <= x"0000";      -- Reset program counter to 0 during reset 
+        else 
+			if (PC_en = '1') then 
+				-- If the enable is high then update the program counter
+				PC <= pc_temp + src_mux_out;
+			end if;
         end if;
-		end loop;
-		
-		PC <= pc_temp + src_mux_out;
     end if;
 end process;
 
--- Program address bus gets the same value as the program counter 
-	LOAD_AND: for i in 7 downto 0 generate
-		pc_temp(i) <= PC(i) and load;
-	end generate LOAD_AND;
-	
-	ProgAB <= pc_temp + src_mux_out;
+-- Update based on relative/absolute addressing
+pc_temp <= PC when (load = '1');
+pc_temp <= x"0000" when (load = '0');
+
+ProgAB <= pc_temp + src_mux_out;
 
 -- Source select mux selects the source based on the Sel control signal 
     with Sel select src_mux_out <=
