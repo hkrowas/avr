@@ -66,6 +66,20 @@ entity  AVR_CPU  is
 end  AVR_CPU;
 
 architecture AVR_CPU_ARCH of AVR_CPU is
+  component IUNIT
+    port(
+        clock  :  in  std_logic;                    -- Clock for the Instruction Access Unit
+        load   :  in  std_logic;                    -- Control for direct/relative addressing
+        PC_en  :  in  std_logic;                    -- Enable signal for PC
+        IR     :  in  std_logic_vector(15 downto 0);-- Input from IR
+        Sel    :  in  std_logic_vector( 2 downto 0);-- Select signal for source mux
+        ZReg   :  in  std_logic_vector(15 downto 0);-- Z register from register array
+        ProgDB :  in  std_logic_vector(15 downto 0);-- Program data bus
+        DataDB :  in  std_logic_vector( 7 downto 0);-- Data data bus
+        PC     :  buffer std_logic_vector(15 downto 0); -- Program counter register
+        ProgAB :  out std_logic_vector(15 downto 0) -- Program address bus
+    );
+  end component;
   component DUNIT
     port(
         clock  :  in  std_logic;
@@ -225,6 +239,21 @@ begin
   dataWr <= DataWr_Buffer;
   PC_high <= PC(15 downto 8);
   PC_low <= PC(7 downto 0);
+
+  instruction_unit : IUNIT
+    port map (
+      clock => clock,
+      load => PC_load,
+      PC_en => PC_en,
+      IR => IR_out,
+      Sel => SelPC,
+      ZReg => ZReg,
+      DataDB => DataDB,
+      PC => PC,
+      ProgAB => ProgAB,
+      ProgDB => IR_buf
+    );
+
   data_unit : DUNIT
     port map (
       clock => clock,
