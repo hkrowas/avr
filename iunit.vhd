@@ -79,10 +79,15 @@ process(clock)
 end process;
 
 -- Update based on relative/absolute addressing
-pc_temp <= PC when (load = '1');
-pc_temp <= x"0000" when (load = '0');
+with load select pc_temp <=
+    PC when '1',
+    x"0000" when '0';
 
-ProgAB <= pc_temp + src_mux_out;
+-- Address bus should be set to 0 upon reset to fetch instruction 
+with Reset select ProgAB <=
+	pc_temp + src_mux_out when '1',
+	x"0000" when '0';
+
 
 -- Source select mux selects the source based on the Sel control signal 
     with Sel select src_mux_out <=
