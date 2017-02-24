@@ -45,10 +45,9 @@ begin
   process(clock)
   begin
     if (rising_edge(clock)) then
-      -- En_SP enables writes to SP. Reset makes SP all ones.
-      for i in 15 downto 0 loop
-        IROut(i) <= (IRin(i) and IR_en) or (IROut(i) and not(IR_en));
-      end loop;
+      if (IR_en = '1') then
+        IROut <= IRin;
+      end if;
     end if;
   end process;
 end IR_ARCH;

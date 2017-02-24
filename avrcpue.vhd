@@ -162,8 +162,9 @@ architecture AVR_CPU_ARCH of AVR_CPU is
         ISelect  :  out std_logic_vector(1 downto 0);
         IR_en    :  buffer std_logic;
         PC_en    :  out std_logic;
-        PC_load   :  out std_logic;
+        PC_load  :  out std_logic;
         SelPC    :  out std_logic_vector(2 downto 0);
+        IR_Buf   : out std_logic_vector(15 downto 0);
         DBaseSelect :  out std_logic_vector(2 downto 0);
         DOffSelect  :  out std_logic_vector(1 downto 0);
         DataOutSel  :  out std_logic_vector(1 downto 0);
@@ -202,6 +203,7 @@ architecture AVR_CPU_ARCH of AVR_CPU is
 
   signal IR_out  :  std_logic_vector(15 downto 0);
   signal IR_en : std_logic;
+  signal IR_buf : std_logic_vector(15 downto 0);
 
   signal StatusRegister : std_logic_vector(7 downto 0);
   signal StatRegOut  :  std_logic_vector(7 downto 0);
@@ -302,6 +304,7 @@ begin
       PC_en => PC_en,
       PC_load => PC_load,
       SelPC => SelPC,
+      IR_buf => IR_buf,
       DBaseSelect => DBaseSelect,
       DOffSelect => DOffSelect,
       DataOutSel => DataOutSel,

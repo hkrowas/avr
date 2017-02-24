@@ -47,10 +47,12 @@ begin
   process(clock)
   begin
     if (rising_edge(clock)) then
-      -- En_SP enables writes to SP. Reset makes SP all ones.
-      for i in 15 downto 0 loop
-        SPOut(i) <= (SPin(i) and En_SP) or (SPout(i) and not(En_SP)) or not(Reset);
-      end loop;
+      if (En_SP = '1') then
+        SPOut <= SPin;
+      end if;
+      if (Reset = '0') then
+        SPOut <= x"FFFF";
+      end if;
     end if;
   end process;
 end SP_ARCH;
