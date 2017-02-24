@@ -11,7 +11,7 @@
 ----------------------------------------------------------------------------
 --
 --
---  DUNIT
+--  IUNIT
 --
 --  The instruction access unit for the AVR.
 --
@@ -81,12 +81,14 @@ end process;
 -- Update based on relative/absolute addressing
 with load select pc_temp <=
     PC when '1',
-    x"0000" when '0';
+    x"0000" when '0',
+    x"0000" when others;
 
--- Address bus should be set to 0 upon reset to fetch instruction 
+-- Address bus should be set to 0 upon reset to fetch instruction
 with Reset select ProgAB <=
 	pc_temp + src_mux_out when '1',
-	x"0000" when '0';
+	x"0000" when '0',
+  x"0000" when others;
 
 
 -- Source select mux selects the source based on the Sel control signal

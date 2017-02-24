@@ -125,7 +125,6 @@ entity  CUNIT  is
         IR_Buf   : out std_logic_vector(15 downto 0);
         DBaseSelect :  out std_logic_vector(2 downto 0);
         DOffSelect  :  out std_logic_vector(1 downto 0);
-        ISelect :  out std_logic_vector(2 downto 0);
         DataOutSel  :  out std_logic_vector(1 downto 0);
         FlagMask    :  out std_logic_vector(7 downto 0)
     );
@@ -262,6 +261,7 @@ begin
       En <= '1';
       if (count = "00") then
         PC_en <= '0';
+        IR_en <= '0';
         ALUOp <= ALU_ADD;
       else
         ALUOp <= "111001";
@@ -418,6 +418,8 @@ begin
     if (std_match(IR, OpSBIW)) then
       En <= '1';
       if (count = "00") then
+        PC_en <= '0';
+        IR_en <= '0';
         ALUOp <= ALU_SUB;
       else
         ALUOp <= "111101";
