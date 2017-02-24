@@ -158,6 +158,7 @@ architecture AVR_CPU_ARCH of AVR_CPU is
     port (
         IR       :  in  opcode_word;
         SR       :  in  std_logic_vector(7 downto 0);
+        ALU_SR   :  in  std_logic_vector(7 downto 0);
         clock    :  in  std_logic;
         ProgDB   :  in  std_logic_vector(15 downto 0);
         DataRd   :  out std_logic;
@@ -315,6 +316,7 @@ begin
     port map (
       IR => IR_out,
       SR => StatusRegister,
+      ALU_SR => StatusRegister,
       clock => clock,
       ProgDB => ProgDB,
       DataRd => DataRd,
