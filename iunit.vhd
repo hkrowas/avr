@@ -95,9 +95,10 @@ with Reset select ProgAB <=
     with Sel select src_mux_out <=
      x"0001" when "000",
      ProgDB when "001",
-     "0000" & IR(11 downto 0) when "010",
+     IR(11) & IR(11) & IR(11) & IR(11) & IR(11 downto 0) when "010",
      ZReg when "011",
-     "000000000" & IR(9 downto 3)  when "100",
+     IR(9) & IR(9) & IR(9) & IR(9) & IR(9) & IR(9) & IR(9) & IR(9)
+        & IR(9) & IR(9 downto 3)  when "100",
      "00000000" & DataDB when "101",
      DataDB & PC(7 downto 0) when "110",
      x"0000" when others;

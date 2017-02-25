@@ -209,6 +209,7 @@ architecture CUNIT_ARCH of CUNIT is
     WRITE_INSTRUCTION,-- 2 Cycle write instruction
     STS_INSTRUCTION,  -- For STS
     LDS_INSTRUCTION,  -- For LDS
+    JUMP_INSTRUCTION,
     CALL_INSTRUCTION, -- Any CALL instruction
     RET_INSTRUCTION,  -- Any RET instruction
     SKIP_INSTRUCTION, -- For when a skip instruction takes a skip
@@ -788,26 +789,28 @@ begin
 ------- Branches -------------------------------------------------------------
 ------------------------------------------------------------------------------
     if (std_match(IR, OpJMP)) then
-      PC_load <= '0';
       if (count = "00" or count = "01") then
+        PC_load <= '1';
         IR_buf_en <= '1';
         SelPC <= PC_one;
         PC_en <= '0';
         IR_en <= '0';
       end if;
       if (count = "10") then
+        PC_load <= '0';
         SelPC <= PC_absolute;  -- PC just gets the absolute address on the ProgDB
         PC_en <= '1';
         IR_en <= '1';
       end if;
     end if;
     if (std_match(IR, OpRJMP)) then
-      SelPC <= PC_rel;          -- PC = PC + relative_address
       PC_load <= '1';
       if (count = "00") then
-        PC_en <= '0';
+        SelPC <= PC_one;
+        PC_en <= '1';
         IR_en <= '0';
       else
+        SelPC <= PC_rel;          -- PC = PC + 1 + relative_address
         PC_en <= '1';
         IR_en <= '1';
       end if;
@@ -1102,6 +1105,10 @@ begin
               IState <= WRITE_INSTRUCTION;
             end if;
           end if;
+          if (std_match(IR, OpJMP) or std_match(IR, OpIJMP) or std_match(IR, OpRJMP)) then
+            count <= "01";
+            IState <= JUMP_INSTRUCTION;
+          end if;
           if (std_match(IR, OpCALL)
               or std_match(IR, OpRCALL) or std_match(IR, OpICALL)) then
             count <= "01";
@@ -1158,6 +1165,13 @@ begin
           DataWr <= '1';
           DataRd <= '1';
           IState <= IDLE;
+        when JUMP_INSTRUCTION =>
+          if (IR_en = '1') then
+            count <= "00";
+            IState <= IDLE;
+          elsif (count = "01") then
+            count <= "10";
+          end if;
         when CALL_INSTRUCTION =>
           if (count <= "01") then
             DataWr <= '0';
