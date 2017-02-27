@@ -10,7 +10,7 @@
 --      9 May 00  Glen George       Updated comments.
 --      7 May 02  Glen George       Updated comments.
 --     21 Jan 08  Glen George       Updated comments.
---     2016-02-18  Harrison Krowas    Added architecture
+--     2017-02-18  Harrison Krowas    Added architecture
 --
 ----------------------------------------------------------------------------
 
@@ -55,6 +55,7 @@ entity  AVR_CPU  is
         INT0    :  in     std_logic;                       -- interrupt signal (active low)
         INT1    :  in     std_logic;                       -- interrupt signal (active low)
         clock   :  in     std_logic;                       -- system clock
+        DataWr_buffer :  in  std_logic;
         ProgAB  :  out    std_logic_vector(15 downto 0);   -- program memory address bus
         DataAB  :  out    std_logic_vector(15 downto 0);   -- data memory address bus
         DataWr  :  out    std_logic;                       -- data memory write enable (active low)
@@ -206,7 +207,6 @@ architecture AVR_CPU_ARCH of AVR_CPU is
   signal Address : std_logic_vector(15 downto 0);
 
   signal DBBuffer : std_logic_vector(7 downto 0);
-  signal DataWr_buffer : std_logic;
 
   signal Con  :  std_logic_vector(7 downto 0);
   signal ConSel  :  std_logic;
@@ -236,7 +236,6 @@ architecture AVR_CPU_ARCH of AVR_CPU is
   signal PC  :  std_logic_vector(15 downto 0);
 
 begin
-  dataWr <= DataWr_Buffer;
   PC_high <= PC(15 downto 8);
   PC_low <= PC(7 downto 0);
 
@@ -319,7 +318,7 @@ begin
       clock => clock,
       ProgDB => ProgDB,
       DataRd => DataRd,
-      DataWr => DataWr_Buffer,
+      DataWr => DataWr,
       PrePost => PrePost,
       SP_EN => SP_en,
       Con => Con,

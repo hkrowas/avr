@@ -195,8 +195,8 @@ architecture CUNIT_ARCH of CUNIT is
   constant PC_z : std_logic_vector(2 downto 0) := "011";    -- PC = Z
   constant PC_con : std_logic_vector(2 downto 0) := "100";  -- PC = PC + const
   -- For use in RET.
-  constant PC_top : std_logic_vector(2 downto 0) := "101";  -- PC = DataDB & PC(7-0)
-  constant PC_bot : std_logic_vector(2 downto 0) := "110";  -- PC = 0 & DataDB
+  constant PC_bot : std_logic_vector(2 downto 0) := "101";  -- PC = DataDB & PC(7-0)
+  constant PC_top : std_logic_vector(2 downto 0) := "110";  -- PC = 0 & DataDB
 
   signal count  :  std_logic_vector(1 downto 0);       -- counter for 2 clock instructions
   signal IR_buf_en : std_logic;       -- Enable for IR buffer

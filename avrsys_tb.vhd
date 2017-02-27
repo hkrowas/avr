@@ -33,6 +33,7 @@ architecture avrsys_tb_ARCH of avrsys_tb is
         INT0    :  in     std_logic;                       -- interrupt signal (active low)
         INT1    :  in     std_logic;                       -- interrupt signal (active low)
         clock   :  in     std_logic;                       -- system clock
+        DataWr_buffer : in std_logic;
         ProgAB  :  out    std_logic_vector(15 downto 0);   -- program memory address bus
         DataAB  :  out    std_logic_vector(15 downto 0);   -- data memory address bus
         DataWr  :  out    std_logic;                       -- data memory write enable (active low)
@@ -81,6 +82,7 @@ begin
       ProgDB    => ProgDB,
       Reset     => reset,
       clock     => clock,
+      DataWr_buffer => WE,
       ProgAB    => ProgAB,
       DataAB    => DataAB,
       DataWr    => WE,
