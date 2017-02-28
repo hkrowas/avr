@@ -54,6 +54,7 @@
 --    DBaseSelect  -  Data access unit base select
 --    BOffSelect   -  Data access unit offset select
 --    FlagMask  -  SR mask. Set bits indicate that flag changes with instruction.
+--    I_set - I flag set (for RETI)
 --    ALUOp - Operation sent to ALU
 --              "----00"   F-Block select
 --              "----01"   Add/Sub select
@@ -106,7 +107,7 @@ entity  CUNIT  is
         clock    :  in  std_logic;
         ProgDB   :  in  std_logic_vector(15 downto 0);
         DataRd   :  out std_logic;
-        DataWr   :  out std_logic;
+        DataWr_out   :  out std_logic;
         PrePost  :  out std_logic;
         SP_EN    :  out std_logic;
         Con      :  out std_logic_vector(7 downto 0);
@@ -120,12 +121,13 @@ entity  CUNIT  is
         SelB     :  out std_logic_vector(4 downto 0);
         IR_en    :  buffer std_logic;
         PC_en    :  out std_logic;
-        PC_load   :  out std_logic;
+        PC_load  :  out std_logic;
         SelPC    :  out std_logic_vector(2 downto 0);
-        IR_Buf   : out std_logic_vector(15 downto 0);
+        IR_Buf   :  out std_logic_vector(15 downto 0);
         DBaseSelect :  out std_logic_vector(2 downto 0);
         DOffSelect  :  out std_logic_vector(1 downto 0);
         DataOutSel  :  out std_logic_vector(1 downto 0);
+        I_set       :  out std_logic;
         FlagMask    :  out std_logic_vector(7 downto 0)
     );
 end  CUNIT;
@@ -200,6 +202,7 @@ architecture CUNIT_ARCH of CUNIT is
 
   signal count  :  std_logic_vector(1 downto 0);       -- counter for 2 clock instructions
   signal IR_buf_en : std_logic;       -- Enable for IR buffer
+  signal DataWr : std_logic;
 
   -- Type for Instruction Decoding State machine
   type i_states is (
@@ -219,6 +222,8 @@ architecture CUNIT_ARCH of CUNIT is
   signal IState  :  i_states;
 
 begin
+  DataWr_out <= clock or DataWr;    -- Actual datawr is gated by the clock
+
   process(IR, SR, clock, count, ProgDB)
   begin
     -- These default values are chosen only for convenience.
@@ -240,6 +245,7 @@ begin
     PC_en <= '1';       -- Default is to load in next instruction
     IR_en <= '1';
     PC_load <= '1';
+    I_set <= '0';
     SelPC <= PC_one;    -- Default is load next instruction
     DataOutSel <= DataOut_RegA;
 
@@ -862,6 +868,7 @@ begin
       end if;
     end if;
     if (std_match(IR, OpRCALL)) then
+      PrePost <= '1';
       PC_load <= '1';
       DBaseSelect <= SP_SEL;
       DOffSelect <= neg_one;
@@ -888,6 +895,7 @@ begin
       end if;
     end if;
     if (std_match(IR, OpICALL)) then
+      PrePost <= '1';
       DBaseSelect <= SP_SEL;
       DOffSelect <= neg_one;
       if (count = "00") then
@@ -919,6 +927,9 @@ begin
       DOffSelect <= one;
       PrePost <= '0';
       PC_load <= '0';
+      if (std_match(IR, OpRETI)) then
+        I_set <= '1';
+      end if;
       if (count = "00") theN
         PC_en <= '0';
         SP_en <= '0';
@@ -956,10 +967,11 @@ begin
       else
         SelPC <= PC_one;
         PC_en <= '1';
+        IR_en <= '1';
       end if;
     end if;
-    if (std_match(IR, OpBRBC)) then
-      if (SR(conv_integer(IR(2 downto 0))) = '0') then
+    if (std_match(IR, OpBRBS)) then
+      if (SR(conv_integer(IR(2 downto 0))) = '1') then
         if (count = "00") then
           SelPC <= PC_one;
           PC_en <= '1';
@@ -972,14 +984,16 @@ begin
       else
         SelPC <= PC_one;
         PC_en <= '1';
+        IR_en <= '1';
       end if;
     end if;
     if (std_match(IR, OpCPSE)) then
       SelPC <= PC_one;
       ALUOp <= ALU_SUB;
       PC_en <= '1';
+      SelB <= IR(9) & IR(3 downto 0);
       if (count = "00") then
-        IR_en <= ALU_SR(1);
+        IR_en <= not(ALU_SR(1));
       end if;
       if (count = "01") then
         if (not(std_match(ProgDB, OpCALL) or std_match(ProgDB, OpJMP)
@@ -988,7 +1002,8 @@ begin
         else
           IR_en <= '0';
         end if;
-      else
+      end if;
+      if (count = "10") then
         IR_en <= '1';
       end if;
     end if;
@@ -1006,7 +1021,8 @@ begin
         else
           IR_en <= '0';
         end if;
-      else
+      end if;
+      if (count = "10") then
         IR_en <= '1';
       end if;
     end if;
@@ -1025,7 +1041,8 @@ begin
         else
           IR_en <= '0';
         end if;
-      else
+      end if;
+      if (count = "10") then
         IR_en <= '1';
       end if;
     end if;
@@ -1059,7 +1076,8 @@ begin
       Con <= IR(11 downto 8) & IR(3 downto 0);
     end if;
 
-    if (std_match(IR, OpBLD) or std_match(IR, OpBST)) then
+    if (std_match(IR, OpBLD) or std_match(IR, OpBST) or std_match(IR, OpRETI)
+        or std_match(IR, OpSBRC) or std_match(IR, OpSBRS)) then
       ConSel <= '1';
       Con <= "00000" & IR(2 downto 0);
     end if;

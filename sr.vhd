@@ -34,6 +34,7 @@ entity  SR  is
         RegIn   :  in  std_logic_vector(7 downto 0);    -- DFF input
         Mask    :  in  std_logic_vector(7 downto 0);
         clock   :  in  std_logic;
+        I_set   :  in  std_logic;
         RegOut  :  buffer std_logic_vector(7 downto 0)
     );
 end  SR;
@@ -46,6 +47,9 @@ begin
       -- RegOut gets old value if bit in mask not set
       -- RegOut gets Regin value if bit in mask is set
       RegOut <= (RegOut and not(Mask)) or (RegIn and Mask);
+    end if;
+    if (I_set = '1') then
+      RegOut(7) <= '1';
     end if;
   end process;
 end SR_ARCH;

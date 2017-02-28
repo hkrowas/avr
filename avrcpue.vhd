@@ -152,6 +152,7 @@ architecture AVR_CPU_ARCH of AVR_CPU is
         RegIn   :  in  std_logic_vector(7 downto 0);    -- DFF input
         Mask    :  in  std_logic_vector(7 downto 0);
         clock   :  in  std_logic;
+        I_set   :  in  std_logic;
         RegOut  :  buffer std_logic_vector(7 downto 0)
     );
   end component;
@@ -163,7 +164,7 @@ architecture AVR_CPU_ARCH of AVR_CPU is
         clock    :  in  std_logic;
         ProgDB   :  in  std_logic_vector(15 downto 0);
         DataRd   :  out std_logic;
-        DataWr   :  out std_logic;
+        DataWr_out   :  out std_logic;
         PrePost  :  out std_logic;
         SP_EN    :  out std_logic;
         Con      :  out std_logic_vector(7 downto 0);
@@ -179,7 +180,8 @@ architecture AVR_CPU_ARCH of AVR_CPU is
         PC_en    :  out std_logic;
         PC_load  :  out std_logic;
         SelPC    :  out std_logic_vector(2 downto 0);
-        IR_Buf   : out std_logic_vector(15 downto 0);
+        IR_Buf   :  out std_logic_vector(15 downto 0);
+        I_set    :  out std_logic;
         DBaseSelect :  out std_logic_vector(2 downto 0);
         DOffSelect  :  out std_logic_vector(1 downto 0);
         DataOutSel  :  out std_logic_vector(1 downto 0);
@@ -228,6 +230,8 @@ architecture AVR_CPU_ARCH of AVR_CPU is
   signal SelPC  :  std_logic_vector(2 downto 0);
 
   signal Result : std_logic_vector(7 downto 0);
+
+  signal I_set  : std_logic;
 
   signal DataOutSel  :  std_logic_vector(1 downto 0);
   signal RegA  :  std_logic_vector(7 downto 0);
@@ -318,7 +322,7 @@ begin
       clock => clock,
       ProgDB => ProgDB,
       DataRd => DataRd,
-      DataWr => DataWr,
+      DataWr_out => DataWr,
       PrePost => PrePost,
       SP_EN => SP_en,
       Con => Con,
@@ -338,6 +342,7 @@ begin
       DBaseSelect => DBaseSelect,
       DOffSelect => DOffSelect,
       DataOutSel => DataOutSel,
+      I_set => I_set,
       FlagMask => FlagMask
     );
 
@@ -346,7 +351,8 @@ begin
         RegIn => StatRegOut,
         Mask => FlagMask,
         clock => clock,
-        RegOut => StatusRegister
+        RegOut => StatusRegister,
+        I_set => I_set
     );
 
   instruction_register : IR
