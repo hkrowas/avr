@@ -10,7 +10,7 @@
 --      9 May 00  Glen George       Updated comments.
 --      7 May 02  Glen George       Updated comments.
 --     21 Jan 08  Glen George       Updated comments.
---     2016-02-18  Harrison Krowas    Added architecture
+--     2017-02-18  Harrison Krowas    Added architecture
 --
 ----------------------------------------------------------------------------
 
@@ -55,6 +55,7 @@ entity  AVR_CPU  is
         INT0    :  in     std_logic;                       -- interrupt signal (active low)
         INT1    :  in     std_logic;                       -- interrupt signal (active low)
         clock   :  in     std_logic;                       -- system clock
+        DataWr_buffer :  in  std_logic;
         ProgAB  :  out    std_logic_vector(15 downto 0);   -- program memory address bus
         DataAB  :  out    std_logic_vector(15 downto 0);   -- data memory address bus
         DataWr  :  out    std_logic;                       -- data memory write enable (active low)
@@ -71,7 +72,7 @@ architecture AVR_CPU_ARCH of AVR_CPU is
         clock  :  in  std_logic;                    -- Clock for the Instruction Access Unit
         load   :  in  std_logic;                    -- Control for direct/relative addressing
         PC_en  :  in  std_logic;                    -- Enable signal for PC
-        Reset  :  in  std_logic;                    -- System Reset 
+        Reset  :  in  std_logic;                    -- System Reset
         IR     :  in  std_logic_vector(15 downto 0);-- Input from IR
         Sel    :  in  std_logic_vector( 2 downto 0);-- Select signal for source mux
         ZReg   :  in  std_logic_vector(15 downto 0);-- Z register from register array
@@ -151,6 +152,7 @@ architecture AVR_CPU_ARCH of AVR_CPU is
         RegIn   :  in  std_logic_vector(7 downto 0);    -- DFF input
         Mask    :  in  std_logic_vector(7 downto 0);
         clock   :  in  std_logic;
+        I_set   :  in  std_logic;
         RegOut  :  buffer std_logic_vector(7 downto 0)
     );
   end component;
@@ -158,10 +160,11 @@ architecture AVR_CPU_ARCH of AVR_CPU is
     port (
         IR       :  in  opcode_word;
         SR       :  in  std_logic_vector(7 downto 0);
+        ALU_SR   :  in  std_logic_vector(7 downto 0);
         clock    :  in  std_logic;
         ProgDB   :  in  std_logic_vector(15 downto 0);
         DataRd   :  out std_logic;
-        DataWr   :  out std_logic;
+        DataWr_out   :  out std_logic;
         PrePost  :  out std_logic;
         SP_EN    :  out std_logic;
         Con      :  out std_logic_vector(7 downto 0);
@@ -173,12 +176,12 @@ architecture AVR_CPU_ARCH of AVR_CPU is
         WSel     :  out std_logic_vector(1 downto 0);
         SelA     :  out std_logic_vector(4 downto 0);
         SelB     :  out std_logic_vector(4 downto 0);
-        ISelect  :  out std_logic_vector(1 downto 0);
         IR_en    :  buffer std_logic;
         PC_en    :  out std_logic;
         PC_load  :  out std_logic;
         SelPC    :  out std_logic_vector(2 downto 0);
-        IR_Buf   : out std_logic_vector(15 downto 0);
+        IR_Buf   :  out std_logic_vector(15 downto 0);
+        I_set    :  out std_logic;
         DBaseSelect :  out std_logic_vector(2 downto 0);
         DOffSelect  :  out std_logic_vector(1 downto 0);
         DataOutSel  :  out std_logic_vector(1 downto 0);
@@ -206,7 +209,6 @@ architecture AVR_CPU_ARCH of AVR_CPU is
   signal Address : std_logic_vector(15 downto 0);
 
   signal DBBuffer : std_logic_vector(7 downto 0);
-  signal DataWr_buffer : std_logic;
 
   signal Con  :  std_logic_vector(7 downto 0);
   signal ConSel  :  std_logic;
@@ -229,6 +231,8 @@ architecture AVR_CPU_ARCH of AVR_CPU is
 
   signal Result : std_logic_vector(7 downto 0);
 
+  signal I_set  : std_logic;
+
   signal DataOutSel  :  std_logic_vector(1 downto 0);
   signal RegA  :  std_logic_vector(7 downto 0);
   signal PC_high  :  std_logic_vector(7 downto 0);
@@ -236,7 +240,6 @@ architecture AVR_CPU_ARCH of AVR_CPU is
   signal PC  :  std_logic_vector(15 downto 0);
 
 begin
-  dataWr <= DataWr_Buffer;
   PC_high <= PC(15 downto 8);
   PC_low <= PC(7 downto 0);
 
@@ -304,7 +307,7 @@ begin
 
   arithmetic_logic_unit : ALU
     port map (
-      OperandA      =>  OperandA,
+      OperandA      =>  RegA,
       OperandB      =>  OperandB,
       AluOp         =>  ALUOp,
       StatRegIn     =>  StatusRegister,
@@ -315,10 +318,11 @@ begin
     port map (
       IR => IR_out,
       SR => StatusRegister,
+      ALU_SR => StatRegOut,
       clock => clock,
       ProgDB => ProgDB,
       DataRd => DataRd,
-      DataWr => DataWr_Buffer,
+      DataWr_out => DataWr,
       PrePost => PrePost,
       SP_EN => SP_en,
       Con => Con,
@@ -338,6 +342,7 @@ begin
       DBaseSelect => DBaseSelect,
       DOffSelect => DOffSelect,
       DataOutSel => DataOutSel,
+      I_set => I_set,
       FlagMask => FlagMask
     );
 
@@ -346,7 +351,8 @@ begin
         RegIn => StatRegOut,
         Mask => FlagMask,
         clock => clock,
-        RegOut => StatusRegister
+        RegOut => StatusRegister,
+        I_set => I_set
     );
 
   instruction_register : IR

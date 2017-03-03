@@ -22,6 +22,7 @@
 --  Inputs:
 --    IR  -  Instruction register for instruction decoding
 --    SR  -  Status register for branching
+--    ALU_SR - Output of ALU to status register.
 --    clock
 --    ProgDB - Program Data bus. For skip instructions.
 --
@@ -49,10 +50,11 @@
 --    PC_load   -  If active, relative PC addressing. If not, absolute.
 --    SelPC    -  PC source select.
 --    DataOutSel - Data Out select.
---    IR_buf     - Always gets ProgDB regardless of IR_en.
+--    IR_buf      - For use in call instructions. Holds absolute address.
 --    DBaseSelect  -  Data access unit base select
 --    BOffSelect   -  Data access unit offset select
 --    FlagMask  -  SR mask. Set bits indicate that flag changes with instruction.
+--    I_set - I flag set (for RETI)
 --    ALUOp - Operation sent to ALU
 --              "----00"   F-Block select
 --              "----01"   Add/Sub select
@@ -101,10 +103,11 @@ entity  CUNIT  is
     port (
         IR       :  in  opcode_word;
         SR       :  in  std_logic_vector(7 downto 0);
+        ALU_SR   :  in  std_logic_vector(7 downto 0);
         clock    :  in  std_logic;
         ProgDB   :  in  std_logic_vector(15 downto 0);
         DataRd   :  out std_logic;
-        DataWr   :  out std_logic;
+        DataWr_out   :  out std_logic;
         PrePost  :  out std_logic;
         SP_EN    :  out std_logic;
         Con      :  out std_logic_vector(7 downto 0);
@@ -118,13 +121,13 @@ entity  CUNIT  is
         SelB     :  out std_logic_vector(4 downto 0);
         IR_en    :  buffer std_logic;
         PC_en    :  out std_logic;
-        PC_load   :  out std_logic;
+        PC_load  :  out std_logic;
         SelPC    :  out std_logic_vector(2 downto 0);
-        IR_Buf   : out std_logic_vector(15 downto 0);
+        IR_Buf   :  out std_logic_vector(15 downto 0);
         DBaseSelect :  out std_logic_vector(2 downto 0);
         DOffSelect  :  out std_logic_vector(1 downto 0);
-        ISelect :  out std_logic_vector(2 downto 0);
         DataOutSel  :  out std_logic_vector(1 downto 0);
+        I_set       :  out std_logic;
         FlagMask    :  out std_logic_vector(7 downto 0)
     );
 end  CUNIT;
@@ -188,17 +191,18 @@ architecture CUNIT_ARCH of CUNIT is
   constant DataOut_PC_low : std_logic_vector(1 downto 0) := "10";
 
   -- Instruction Source Select Constants
-  constant PC_one : std_logic_vector(2 downto 0) := "000";
-  constant PC_absolute : std_logic_vector(2 downto 0) := "001";
-  constant PC_rel : std_logic_vector(2 downto 0) := "010";
-  constant PC_z : std_logic_vector(2 downto 0) := "011";
-  constant PC_con : std_logic_vector(2 downto 0) := "100";
-  constant PC_top : std_logic_vector(2 downto 0) := "101";
-  constant PC_bot : std_logic_vector(2 downto 0) := "110";
-
+  constant PC_one : std_logic_vector(2 downto 0) := "000";    -- PC = PC + 1
+  constant PC_absolute : std_logic_vector(2 downto 0) := "001"; -- PC = absolute
+  constant PC_rel : std_logic_vector(2 downto 0) := "010";  -- PC = PC + IR(11-0)
+  constant PC_z : std_logic_vector(2 downto 0) := "011";    -- PC = Z
+  constant PC_con : std_logic_vector(2 downto 0) := "100";  -- PC = PC + const
+  -- For use in RET.
+  constant PC_bot : std_logic_vector(2 downto 0) := "101";  -- PC = DataDB & PC(7-0)
+  constant PC_top : std_logic_vector(2 downto 0) := "110";  -- PC = 0 & DataDB
 
   signal count  :  std_logic_vector(1 downto 0);       -- counter for 2 clock instructions
-  signal IR_buf_en : std_logic;
+  signal IR_buf_en : std_logic;       -- Enable for IR buffer
+  signal DataWr : std_logic;
 
   -- Type for Instruction Decoding State machine
   type i_states is (
@@ -208,6 +212,7 @@ architecture CUNIT_ARCH of CUNIT is
     WRITE_INSTRUCTION,-- 2 Cycle write instruction
     STS_INSTRUCTION,  -- For STS
     LDS_INSTRUCTION,  -- For LDS
+    JUMP_INSTRUCTION,
     CALL_INSTRUCTION, -- Any CALL instruction
     RET_INSTRUCTION,  -- Any RET instruction
     SKIP_INSTRUCTION, -- For when a skip instruction takes a skip
@@ -217,10 +222,11 @@ architecture CUNIT_ARCH of CUNIT is
   signal IState  :  i_states;
 
 begin
+  DataWr_out <= clock or DataWr;    -- Actual datawr is gated by the clock
+
   process(IR, SR, clock, count, ProgDB)
   begin
-    -- All opcodes. This section controls En and the flag mask, which are both
-    -- specific to the instruction.
+    -- These default values are chosen only for convenience.
     IR_buf_en <= '0';
     En <= '0';
     PrePost <= '-';
@@ -239,11 +245,13 @@ begin
     PC_en <= '1';       -- Default is to load in next instruction
     IR_en <= '1';
     PC_load <= '1';
+    I_set <= '0';
     SelPC <= PC_one;    -- Default is load next instruction
     DataOutSel <= DataOut_RegA;
 
+------------------------------------------------------------------------------
 ----------- ALU Operations------------------------------------------------
-
+------------------------------------------------------------------------------
     if (std_match(IR, OpADC)) then
       En <= '1';
       ALUOp <= ALU_ADC;
@@ -260,6 +268,7 @@ begin
       En <= '1';
       if (count = "00") then
         PC_en <= '0';
+        IR_en <= '0';
         ALUOp <= ALU_ADD;
       else
         ALUOp <= "111001";
@@ -416,6 +425,8 @@ begin
     if (std_match(IR, OpSBIW)) then
       En <= '1';
       if (count = "00") then
+        PC_en <= '0';
+        IR_en <= '0';
         ALUOp <= ALU_SUB;
       else
         ALUOp <= "111101";
@@ -442,8 +453,9 @@ begin
       FlagMask <= x"00";
     end if;
 
+------------------------------------------------------------------------------
 --------- Data Access Operations----------------------------------------------
-
+------------------------------------------------------------------------------
     if (std_match(IR, OpLDX)) then
       DMux <= "01";
       if (count = "00") then
@@ -779,33 +791,38 @@ begin
       En <= '0';
     end if;
 
-------- Branches --------------------------------------------------------------
+------------------------------------------------------------------------------
+------- Branches -------------------------------------------------------------
+------------------------------------------------------------------------------
     if (std_match(IR, OpJMP)) then
-      PC_load <= '1';
       if (count = "00" or count = "01") then
+        PC_load <= '1';
+        IR_buf_en <= '1';
         SelPC <= PC_one;
         PC_en <= '0';
         IR_en <= '0';
       end if;
       if (count = "10") then
-        SelPC <= PC_absolute;
+        PC_load <= '0';
+        SelPC <= PC_absolute;  -- PC just gets the absolute address on the ProgDB
         PC_en <= '1';
         IR_en <= '1';
       end if;
     end if;
     if (std_match(IR, OpRJMP)) then
-      SelPC <= PC_rel;
       PC_load <= '1';
       if (count = "00") then
-        PC_en <= '0';
+        SelPC <= PC_one;
+        PC_en <= '1';
         IR_en <= '0';
       else
+        SelPC <= PC_rel;          -- PC = PC + 1 + relative_address
         PC_en <= '1';
         IR_en <= '1';
       end if;
     end if;
     if (std_match(IR, OpIJMP)) then
-      SelPC <= PC_Z;
+      SelPC <= PC_Z;            -- PC just gets the value of Z
       PC_load <= '0';
       if (count = "00") then
         PC_en <= '0';
@@ -821,20 +838,20 @@ begin
       DOffSelect <= neg_one;
       if (count = "00") then
         SelPC <= PC_one;
-        IR_buf_en <= '1';
+        IR_buf_en <= '1';     -- Save the absolute address of the call
         PC_load <= '1';
         PC_en <= '1';
         IR_en <= '0';
       end if;
       if (count = "01") then
         SelPC <= PC_one;
-        PC_load <= '1';
+        PC_load <= '1';       -- Advance PC to the instruction we'll return to
         PC_en <= '1';
         SP_en <= '0';
         IR_en <= '0';
       end if;
       if (count = "10") then
-        DataOutSel <= DataOut_PC_high;
+        DataOutSel <= DataOut_PC_high;    -- Save PC to stack
         SelPC <= PC_one;
         PC_load <= '1';
         PC_en <= '0';
@@ -842,8 +859,8 @@ begin
         IR_en <= '0';
       end if;
       if (count = "11") then
-        DataOutSel <= DataOut_PC_low;
-        SelPC <= PC_absolute;
+        DataOutSel <= DataOut_PC_low;     -- Save PC to stack
+        SelPC <= PC_absolute;             -- Jump to absolute address
         PC_load <= '0';
         PC_en <= '1';
         SP_en <= '1';
@@ -851,6 +868,7 @@ begin
       end if;
     end if;
     if (std_match(IR, OpRCALL)) then
+      PrePost <= '1';
       PC_load <= '1';
       DBaseSelect <= SP_SEL;
       DOffSelect <= neg_one;
@@ -862,12 +880,14 @@ begin
         IR_en <= '0';
       end if;
       if (count = "01") then
+        DataOutSel <= DataOut_PC_high;
         SelPC <= PC_one;
         SP_en <= '1';
         PC_en <= '0';
         IR_en <= '0';
       end if;
       if (count = "10") then
+        DataOutSel <= DataOut_PC_low;
         SelPC <= PC_rel;
         SP_en <= '1';
         PC_en <= '1';
@@ -875,10 +895,10 @@ begin
       end if;
     end if;
     if (std_match(IR, OpICALL)) then
+      PrePost <= '1';
       DBaseSelect <= SP_SEL;
       DOffSelect <= neg_one;
       if (count = "00") then
-        IR_buf_en <= '1';
         PC_load <= '1';
         SelPC <= PC_one;
         PC_en <= '1';
@@ -886,6 +906,7 @@ begin
         SP_en <= '0';
       end if;
       if (count = "01") then
+        DataOutSel <= DataOut_PC_high;
         SelPC <= PC_one;
         PC_load <= '1';
         SP_en <= '1';
@@ -893,6 +914,7 @@ begin
         PC_en <= '0';
       end if;
       if (count = "10") then
+        DataOutSel <= DataOut_PC_low;
         SelPC <= PC_Z;
         PC_load <= '0';
         SP_en <= '1';
@@ -905,6 +927,9 @@ begin
       DOffSelect <= one;
       PrePost <= '0';
       PC_load <= '0';
+      if (std_match(IR, OpRETI)) then
+        I_set <= '1';
+      end if;
       if (count = "00") theN
         PC_en <= '0';
         SP_en <= '0';
@@ -942,10 +967,11 @@ begin
       else
         SelPC <= PC_one;
         PC_en <= '1';
+        IR_en <= '1';
       end if;
     end if;
-    if (std_match(IR, OpBRBC)) then
-      if (SR(conv_integer(IR(2 downto 0))) = '0') then
+    if (std_match(IR, OpBRBS)) then
+      if (SR(conv_integer(IR(2 downto 0))) = '1') then
         if (count = "00") then
           SelPC <= PC_one;
           PC_en <= '1';
@@ -958,14 +984,16 @@ begin
       else
         SelPC <= PC_one;
         PC_en <= '1';
+        IR_en <= '1';
       end if;
     end if;
     if (std_match(IR, OpCPSE)) then
       SelPC <= PC_one;
       ALUOp <= ALU_SUB;
       PC_en <= '1';
+      SelB <= IR(9) & IR(3 downto 0);
       if (count = "00") then
-        IR_en <= SR(1);
+        IR_en <= not(ALU_SR(1));
       end if;
       if (count = "01") then
         if (not(std_match(ProgDB, OpCALL) or std_match(ProgDB, OpJMP)
@@ -974,7 +1002,8 @@ begin
         else
           IR_en <= '0';
         end if;
-      else
+      end if;
+      if (count = "10") then
         IR_en <= '1';
       end if;
     end if;
@@ -983,7 +1012,7 @@ begin
       SelPC <= PC_one;
       PC_en <= '1';
       if (count = "00") then
-        IR_en <= not SR(6);
+        IR_en <= not ALU_SR(6);
       end if;
       if (count = "01") then
         if (not(std_match(ProgDB, OpCALL) or std_match(ProgDB, OpJMP)
@@ -992,7 +1021,8 @@ begin
         else
           IR_en <= '0';
         end if;
-      else
+      end if;
+      if (count = "10") then
         IR_en <= '1';
       end if;
     end if;
@@ -1002,7 +1032,7 @@ begin
       ALUOp <= ALU_SUB;
       PC_en <= '1';
       if (count = "00") then
-        IR_en <= SR(6);
+        IR_en <= ALU_SR(6);
       end if;
       if (count = "01") then
         if (not(std_match(ProgDB, OpCALL) or std_match(ProgDB, OpJMP)
@@ -1011,12 +1041,15 @@ begin
         else
           IR_en <= '0';
         end if;
-      else
+      end if;
+      if (count = "10") then
         IR_en <= '1';
       end if;
     end if;
 
--------- This section controls the value of SelA and Con based on the opcode----
+------------------------------------------------------------------------------
+-------- This section controls the value of SelA and Con based on the opcode -
+------------------------------------------------------------------------------
 
     -- Default values
     ConSel <= '0';
@@ -1043,15 +1076,18 @@ begin
       Con <= IR(11 downto 8) & IR(3 downto 0);
     end if;
 
-    if (std_match(IR, OpBLD) or std_match(IR, OpBST)) then
+    if (std_match(IR, OpBLD) or std_match(IR, OpBST) or std_match(IR, OpRETI)
+        or std_match(IR, OpSBRC) or std_match(IR, OpSBRS)) then
       ConSel <= '1';
       Con <= "00000" & IR(2 downto 0);
     end if;
 
   end process;
 
------ This process controls the finite state machine for instruction decoding--
-----  It also controls the DataWr/Rd to prevent glitching ----------------------
+------------------------------------------------------------------------------
+----- This process controls the finite state machine for instruction decoding
+----  It also controls the DataWr/Rd to prevent glitching --------------------
+------------------------------------------------------------------------------
 
   process (clock)
   begin
@@ -1086,6 +1122,10 @@ begin
               DataWr <= '0';
               IState <= WRITE_INSTRUCTION;
             end if;
+          end if;
+          if (std_match(IR, OpJMP) or std_match(IR, OpIJMP) or std_match(IR, OpRJMP)) then
+            count <= "01";
+            IState <= JUMP_INSTRUCTION;
           end if;
           if (std_match(IR, OpCALL)
               or std_match(IR, OpRCALL) or std_match(IR, OpICALL)) then
@@ -1143,6 +1183,13 @@ begin
           DataWr <= '1';
           DataRd <= '1';
           IState <= IDLE;
+        when JUMP_INSTRUCTION =>
+          if (IR_en = '1') then
+            count <= "00";
+            IState <= IDLE;
+          elsif (count = "01") then
+            count <= "10";
+          end if;
         when CALL_INSTRUCTION =>
           if (count <= "01") then
             DataWr <= '0';

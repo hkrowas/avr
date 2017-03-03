@@ -2,7 +2,7 @@
 --
 --  Atmel Testbench With RAM AND ROM
 --
---  This is the testbench for the Atmel 
+--  This is the testbench for the Atmel
 --
 --  Revision History:
 --     2017-02-23     Initial Revision    Torkom Pailevanian
@@ -10,7 +10,6 @@
 ----------------------------------------------------------------------------
 --
 --
---  DUNIT
 
 
 library ieee;
@@ -34,6 +33,7 @@ architecture avrsys_tb_ARCH of avrsys_tb is
         INT0    :  in     std_logic;                       -- interrupt signal (active low)
         INT1    :  in     std_logic;                       -- interrupt signal (active low)
         clock   :  in     std_logic;                       -- system clock
+        DataWr_buffer : in std_logic;
         ProgAB  :  out    std_logic_vector(15 downto 0);   -- program memory address bus
         DataAB  :  out    std_logic_vector(15 downto 0);   -- data memory address bus
         DataWr  :  out    std_logic;                       -- data memory write enable (active low)
@@ -41,7 +41,7 @@ architecture avrsys_tb_ARCH of avrsys_tb is
         DataDB  :  inout  std_logic_vector(7 downto 0)     -- data memory data bus
     );
     end component;
-    
+
     component PROG_MEMORY
 
     port (
@@ -51,7 +51,7 @@ architecture avrsys_tb_ARCH of avrsys_tb is
     );
 
     end  component PROG_MEMORY;
-    
+
     component DATA_MEMORY
 
     port (
@@ -62,51 +62,52 @@ architecture avrsys_tb_ARCH of avrsys_tb is
     );
 
     end  component DATA_MEMORY;
-  
+
     signal ProgAB  :  std_logic_vector(15 downto 0);  -- program address bus
     signal ProgDB  :  std_logic_vector(15 downto 0);   -- program data bus
     signal RE      :  std_logic;             	-- read enable (active low)
     signal WE      :  std_logic;		        -- write enable (active low)
     signal DataAB  :  std_logic_vector(15 downto 0); -- memory address bus
     signal DataDB  :  std_logic_vector(7 downto 0);   -- memory data bus
-    
-    signal clock   :  std_logic;    -- clock for the entire system 
+
+    signal clock   :  std_logic;    -- clock for the entire system
     signal reset   :  std_logic;    -- system reset
-    
+
     signal END_SIM : BOOLEAN := FALSE;
 
 begin
-  
+
     avrcpu : AVR_CPU
     port map (
       ProgDB    => ProgDB,
       Reset     => reset,
       clock     => clock,
+      DataWr_buffer => WE,
       ProgAB    => ProgAB,
       DataAB    => DataAB,
       DataWr    => WE,
       DataRd    => RE,
       DataDB    => DataDB,
-		
+
 		INT0    	 => '1',
       INT1 		 => '1'
     );
-    
+
     ram : DATA_MEMORY
     port map(
-      RE        => RE,  
+      RE        => RE,
       WE        => WE,
       DataAB    => DataAB,
       DataDB    => DataDB
     );
-    
+
     rom : PROG_MEMORY
     port map(
-      ProgAB    => ProgAB,  
+      ProgAB    => ProgAB,
       Reset     => reset,
       ProgDB    => ProgDB
     );
-   
+
 	process
 	  begin
 		 reset <= '0';   -- Reset the system and initialize everything

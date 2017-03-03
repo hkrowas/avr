@@ -18,7 +18,8 @@
 --    SPIn   - Input from the Control Unit
 --    clock  - DFF clock
 --    Reset  - active low synchronous reset
---    En_SP   - register enable
+--    En_SP  - register enable
+--    I_set  - I flag set (for RETI)
 --
 --  Outputs:
 --    SPOut - Output of SP
