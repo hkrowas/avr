@@ -220,18 +220,6 @@ test_std_ldd:
   b29: call TestError    ;
   rel11: ldi   r16, 0x32    ; test load immediate
   cpi   r16, 0x32
-  ldi   r26, 0x5a   ; test move word (X = 0x865a)
-  ldi   r27, 0x86
-test_movw:
-  movw  Y, X        ; Y = X = 0x8651
-  cpi   r28, 0x5a
-  brne  b30
-  rjmp rel12
-  b30: call TestError    ;
-  rel12: cpi   r29, 0x86
-  brne  b31
-  rjmp test_rjmp
-  b31: call TestError    ;
 test_rjmp:
   rjmp rel13 		    ; testing relative jump
 	call TestError  ; should not execute
