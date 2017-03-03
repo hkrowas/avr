@@ -58,7 +58,6 @@ architecture  ROM  of  PROG_MEMORY  is
 
     -- define the actual ROM (initialized to a simple program)
     signal  ROMbits  :  ROMtype  :=  ( 
-
 X"E5A4", X"E2B1", X"9618", X"35AC", X"F011", 
 X"940E", X"0142", X"32B1", X"F011", X"940E", 
 X"0142", X"971C", X"35A0", X"F011", X"940E", 
@@ -98,8 +97,8 @@ X"F409", X"C002", X"940E", X"0142", X"2700",
 X"F409", X"C002", X"940E", X"0142", X"EF0F", 
 X"3F0F", X"F409", X"C002", X"940E", X"0142", 
 X"E203", X"9300", X"0021", X"9100", X"0021", 
-X"E4A3", X"E0B2", X"930C", X"910C", X"E4C3", 
-X"E0D2", X"8308", X"8108", X"E4E3", X"E0F2", 
+X"E0A5", X"EFBE", X"930C", X"910C", X"E0C5", 
+X"EFDE", X"8308", X"8108", X"E0E5", X"EFFE", 
 X"8300", X"8100", X"E209", X"830D", X"2700", 
 X"810D", X"9309", X"9309", X"910A", X"E514", 
 X"2F01", X"3504", X"F409", X"C002", X"940E", 
@@ -123,7 +122,7 @@ X"0F00", X"F010", X"940E", X"0142", X"3004",
 X"F011", X"940E", X"0142", X"9408", X"1F00", 
 X"3009", X"F011", X"940E", X"0142", X"E802", 
 X"9505", X"3C01", X"F011", X"940E", X"0142", 
-X"940E", X"0143", X"CFFF", X"CFFF"  );
+X"940E", X"0143", X"CFFF", X"CFFF");
 
 
 begin

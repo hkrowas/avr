@@ -192,26 +192,26 @@ test_ser:
 test_sts_lds:
   sts   0x0021, r16  ;W 0x23 0x0021 test store and load direct
   lds   r16, 0x0021  ;R 0x21 0x0021
-  ldi   r26, 0x43
-  ldi   r27, 0x02
-  st    X, r16       ;W 0x23 0x0243 test store and load indirect
-  ld    r16, X       ;R 0x23 0x0243
-  ldi   r28, 0x43
-  ldi   r29, 0x02
-  st    Y, r16       ;W 0x23 0x0243
-  ld    r16, Y       ;R 0x23 0x0243
-  ldi   r30, 0x43
-  ldi   r31, 0x02
-  st   Z, r16       ;W 0x23 0x0243
-  ld    r16, Z       ;R 0x23 0x0243
+  ldi   r26, 0x05
+  ldi   r27, 0xFE
+  st    X, r16       ;W 0x23 0xFE05 test store and load indirect
+  ld    r16, X       ;R 0x23 0xFE05
+  ldi   r28, 0x05
+  ldi   r29, 0xFE
+  st    Y, r16       ;W 0x23 0xFE05
+  ld    r16, Y       ;R 0x23 0xFE05
+  ldi   r30, 0x05
+  ldi   r31, 0xFE
+  st   Z, r16       ;W 0x23 0xFE05
+  ld    r16, Z      ;R 0x23 0xFE05
   ldi   r16, 0x29
 test_std_ldd:
-  std   Y+5, r16     ;W 0x29 0x0248 test store and load indirect with displacement
+  std   Y+5, r16     ;W 0x29 0xFE0A test store and load indirect with displacement
   clr   r16
-  ldd   r16, Y+5     ;R 0x29 0x0248
-  st    Y+, r16      ;W 0x29 0x0243
-  st    Y+, r16      ;W 0x29 0x0244
-  ld    r16, -Y      ;R 0x29 0x0243
+  ldd   r16, Y+5     ;R 0x29 0xFE0A
+  st    Y+, r16      ;W 0x29 0xFE0A
+  st    Y+, r16      ;W 0x29 0xFE0B
+  ld    r16, -Y      ;R 0x29 0xFE0A
   ldi   r17, 0x54
   mov   r16, r17     ; test mov
   cpi   r16, 0x54

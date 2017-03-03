@@ -1,5 +1,5 @@
 
-AVRASM ver. 2.2.6  C:\Users\Torkom\Dropbox\Caltech\EE 119\HW\B\avr\test\avr_test\avr_test\main.asm Thu Mar 02 20:06:14 2017
+AVRASM ver. 2.2.6  C:\Users\Torkom\Dropbox\Caltech\EE 119\HW\B\avr\test\avr_test\avr_test\main.asm Thu Mar 02 20:23:32 2017
 
 [builtin](2): Including file 'C:/Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATmega_DFP\1.1.130\avrasm\inc\m16def.inc'
 [builtin](2): Including file 'C:/Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATmega_DFP\1.1.130\avrasm\inc\m16def.inc'
@@ -1063,26 +1063,26 @@ AVRASM ver. 2.2.6  C:\Users\Torkom\Dropbox\Caltech\EE 119\HW\B\avr\test\avr_test
                                  test_sts_lds:
 0000bf 9300 0021                   sts   0x0021, r16  ;W 0x23 0x0021 test store and load direct
 0000c1 9100 0021                   lds   r16, 0x0021  ;R 0x21 0x0021
-0000c3 e4a3                        ldi   r26, 0x43
-0000c4 e0b2                        ldi   r27, 0x02
-0000c5 930c                        st    X, r16       ;W 0x23 0x0243 test store and load indirect
-0000c6 910c                        ld    r16, X       ;R 0x23 0x0243
-0000c7 e4c3                        ldi   r28, 0x43
-0000c8 e0d2                        ldi   r29, 0x02
-0000c9 8308                        st    Y, r16       ;W 0x23 0x0243
-0000ca 8108                        ld    r16, Y       ;R 0x23 0x0243
-0000cb e4e3                        ldi   r30, 0x43
-0000cc e0f2                        ldi   r31, 0x02
-0000cd 8300                        st   Z, r16       ;W 0x23 0x0243
-0000ce 8100                        ld    r16, Z       ;R 0x23 0x0243
+0000c3 e0a5                        ldi   r26, 0x05
+0000c4 efbe                        ldi   r27, 0xFE
+0000c5 930c                        st    X, r16       ;W 0x23 0xFE05 test store and load indirect
+0000c6 910c                        ld    r16, X       ;R 0x23 0xFE05
+0000c7 e0c5                        ldi   r28, 0x05
+0000c8 efde                        ldi   r29, 0xFE
+0000c9 8308                        st    Y, r16       ;W 0x23 0xFE05
+0000ca 8108                        ld    r16, Y       ;R 0x23 0xFE05
+0000cb e0e5                        ldi   r30, 0x05
+0000cc effe                        ldi   r31, 0xFE
+0000cd 8300                        st   Z, r16       ;W 0x23 0xFE05
+0000ce 8100                        ld    r16, Z      ;R 0x23 0xFE05
 0000cf e209                        ldi   r16, 0x29
                                  test_std_ldd:
-0000d0 830d                        std   Y+5, r16     ;W 0x29 0x0248 test store and load indirect with displacement
+0000d0 830d                        std   Y+5, r16     ;W 0x29 0xFE0A test store and load indirect with displacement
 0000d1 2700                        clr   r16
-0000d2 810d                        ldd   r16, Y+5     ;R 0x29 0x0248
-0000d3 9309                        st    Y+, r16      ;W 0x29 0x0243
-0000d4 9309                        st    Y+, r16      ;W 0x29 0x0244
-0000d5 910a                        ld    r16, -Y      ;R 0x29 0x0243
+0000d2 810d                        ldd   r16, Y+5     ;R 0x29 0xFE0A
+0000d3 9309                        st    Y+, r16      ;W 0x29 0xFE0A
+0000d4 9309                        st    Y+, r16      ;W 0x29 0xFE0B
+0000d5 910a                        ld    r16, -Y      ;R 0x29 0xFE0A
 0000d6 e514                        ldi   r17, 0x54
 0000d7 2f01                        mov   r16, r17     ; test mov
 0000d8 3504                        cpi   r16, 0x54
