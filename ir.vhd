@@ -6,6 +6,7 @@
 --
 --  Revision History:
 --     2016-01-23     Initial Revision    Harrison Krowas
+--     2017-02-23     Simplified          Harrison Krowas
 --
 ----------------------------------------------------------------------------
 --

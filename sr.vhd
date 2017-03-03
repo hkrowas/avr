@@ -5,7 +5,8 @@
 --  This is the entity declaration for the Atmel AVR status register.
 --
 --  Revision History:
---     2016-01-23     Initial Revision    Harrison Krowas
+--     2017-01-23     Initial Revision    Harrison Krowas
+--     2017-02-23     Changes to I bit    Harrison Krowas
 --
 ----------------------------------------------------------------------------
 --

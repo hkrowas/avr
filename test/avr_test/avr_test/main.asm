@@ -5,6 +5,9 @@
 ; Author : Torkom
 ;
 
+; Change Log 
+; 2017 02 01 TP, HK     Initial Rev 
+; 2017 03 01 Torkom P   Added branch labels 
 
 ; Replace with your application code
 start:

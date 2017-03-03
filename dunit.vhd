@@ -10,7 +10,9 @@
 --  RegB, a constant from the IR, or the data bus.
 --
 --  Revision History:
---     2016-01-24     Initial Revision    Harrison Krowas
+--     2017-01-24     Initial Revision    Harrison Krowas
+--     2017-02-09     Wrote up Dunit      Harrison Krowas
+--     2017-02-23     Fixed bugs with IR  Harrison Krowas 
 --
 ----------------------------------------------------------------------------
 --

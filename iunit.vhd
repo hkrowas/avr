@@ -7,6 +7,9 @@
 --  Revision History:
 --     2016-01-24     Initial Revision    Harrison Krowas
 --     2017-02-23     Wrote HDL           Torkom Pailevanian
+--     2017-02-23     Modified PC-> 0     Torkom Pailevanian
+--     2017-02-24     Fixed bugs with SBIW Harrison Krowas
+--
 --
 ----------------------------------------------------------------------------
 --

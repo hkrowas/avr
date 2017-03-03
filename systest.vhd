@@ -14,6 +14,7 @@
 --     16 May 04  Glen George       Added more instructions for testing and
 --                                  updated commenting.
 --     21 Jan 08  Glen George       Updated commenting.
+--     02 Mar 17  Torkom P          Changed insturctions to match our test prog 
 --
 ----------------------------------------------------------------------------
 

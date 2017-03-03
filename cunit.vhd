@@ -5,8 +5,13 @@
 --  This is the entity declaration for the Atmel AVR control unit.
 --
 --  Revision History:
---     2016-01-24     Initial Revision       Harrison Krowas
---     2016-02-02     Added ALUOp decoding   Harrison Krowas
+--     2017-01-24     Initial Revision       Harrison Krowas
+--     2017-02-02     Added ALUOp decoding   Harrison Krowas
+--     2017-02-13     Added branch instr     Harrison Krowas
+--     2017-02-14     Modified for branch    Harrison Krowas
+--                       instructions 
+--     2017-02-19     Added data out sel     Harrison Krowas 
+--     2017-02-24     Fixed bugs with SBIW   Harrison Krowas
 --
 ----------------------------------------------------------------------------
 --

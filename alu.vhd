@@ -7,6 +7,7 @@
 --  Revision History:
 --     2017-01-23     Initial Revision    Harrison Krowas
 --     2017-02-02     Wrote HDL           Torkom Pailevanian
+--     2017-02-19     Modified flag bug   Torkom Pailevanian 
 --
 ----------------------------------------------------------------------------
 --
