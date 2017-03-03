@@ -1,0 +1,339 @@
+000000 e5a4                        ldi   r26, 0x54   ;
+000001 e2b1                        ldi   r27, 0x21   ;
+000002 9618                        adiw  X, 0x8      ; test add constant to word
+000003 35ac                        cpi   r26, 0x5c
+000004 f011                        breq  b43
+000005 940e 014f                   call TestError    
+000007 32b1                        b43: cpi    r27, 0x21
+000008 f011                        breq  test_sbiw	;
+000009 940e 014f                   call TestError    ;
+                                 test_sbiw:
+00000b 971c                        sbiw  X, 0x0c     ; test subtract from word
+00000c 35a0                        cpi   r26, 0x50
+00000d f011                        breq  b44
+00000e 940e 014f                   call TestError    ;
+000010 32b1                        b44: cpi    r27, 0x21
+000011 f011                        breq  test_add
+000012 940e 014f                   call TestError    ;
+                                 test_add:
+000014 e000                        ldi   r16, 0
+000015 e31a                        ldi   r17, 58
+000016 0f01                        add   r16, r17      ; test add
+000017 1701                        cp    r16, r17     ; r17 should be equal to r16
+000018 f011                        breq  b1
+000019 940e 014f                   call TestError    ;
+00001b f00b                      b1: brvs  b2          ; previous add should not overflow
+00001c c002                        rjmp rel1
+00001d 940e 014f                 b2: call TestError    ;
+00001f e71f                      rel1:  ldi   r17, 0x7f    ; set up overflow add
+000020 e70f                        ldi   r16, 0x7f
+000021 0f10                        add   r17, r16
+000022 f40b                        brvc  b3           ; branch if not set (i.e. overflow not detected)
+000023 c002                        rjmp test_sub
+000024 940e 014f                 b3:  call TestError    ;
+                                 test_sub:
+000026 e001                        ldi   r16, 1
+000027 e011                        ldi   r17, 1
+000028 1b01                        sub   r16, r17      ; check subtraction
+000029 f409                        brne  b4
+00002a c002                        rjmp test_adc
+00002b 940e 014f                 b4:  call TestError    ;
+                                 test_adc:
+00002d 9408                        sec               ; set carry flag to test adc
+00002e 1f00                        adc   r16, r16
+00002f 3001                        cpi   r16, 1
+000030 f409                        brne  b5
+000031 c002                        rjmp test_subi
+000032 940e 014f                 b5:  call TestError    ;
+                                 test_subi:
+000034 5001                        subi  r16, 1       ; test subtraction by immediate
+000035 f409                        brne  b6
+000036 c002                        rjmp rel2
+000037 940e 014f                 b6:  call TestError    ;
+000039 9408                      rel2:  sec
+                                 test_subc:
+00003a 0b00                        sbc  r16, r16      ; test subtraction with carry
+00003b 3f0f                        cpi   r16, -1
+00003c f409                        brne  b7
+00003d c002                        rjmp test_subci
+00003e 940e 014f                 b7:  call TestError    ;
+                                 test_subci:
+000040 9408                        sec               ; set carry to test subtraction by immediate with carry
+000041 4001                        sbci  r16, 1
+000042 3f0d                        cpi   r16, -3
+000043 f409                        brne  b8
+000044 c002                        rjmp test_and
+000045 940e 014f                 b8:  call TestError    ;
+                                 test_and:
+000047 e000                        ldi   r16, 0
+000048 ef1f                        ldi   r17, 0xff
+000049 2301                        and   r16, r17      ; test r1 & r16
+00004a f409                        brne  b9
+00004b c002                        rjmp rel3
+00004c 940e 014f                 b9:  call TestError    ;
+00004e ef0f                      rel3:  ldi   r16, 0xff
+00004f 2301                        and   r16, r17
+000050 3f0f                        cpi   r16, 0xff
+000051 f409                        brne  b10
+000052 c002                        rjmp test_andi
+000053 940e 014f                 b10:  call TestError    ;
+                                 test_andi:
+000055 7000                        andi  r16, 0x00    ; test and by immediate
+000056 f409                        brne  b11
+000057 c002                        rjmp test_or
+000058 940e 014f                 b11:  call TestError    ;
+                                 test_or:
+00005a e000                        ldi   r16, 0
+00005b e010                        ldi   r17, 0
+00005c 2b01                        or    r16, r17      ; test or
+00005d f409                        brne  b12
+00005e c002                        rjmp rel4
+00005f 940e 014f                  b12: call TestError    ;
+000061 e416                       rel4: ldi   r17, 0x46
+000062 2b01                        or    r16, r17      ; test or
+000063 3406                        cpi   r16, 0x46
+000064 f409                        brne  b13
+000065 c002                        rjmp rel5
+000066 940e 014f                   b13: call TestError    ;
+000068 ef1f                        rel5: ldi   r17, 0xff
+000069 2b01                        or    r16, r17
+00006a 3f0f                        cpi   r16, 0xff
+00006b f409                        brne  b14
+00006c c002                        rjmp test_ori
+00006d 940e 014f                   b14: call TestError    ;
+                                 test_ori:
+00006f e000                        ldi   r16, 0
+000070 6308                        ori   r16, 0x38    ; test or by immediate
+000071 3308                        cpi   r16, 0x38
+000072 f409                        brne  b15
+000073 c002                        rjmp rel6
+000074 940e 014f                  b15: call TestError    ;
+000076 2700                       rel6: eor   r16, r16      ; test exclusive or. r16 should be 0
+000077 f409                        brne  b16
+000078 c002                        rjmp test_com
+000079 940e 014f                   b16: call TestError    ;
+                                 test_com:
+00007b 9500                        com   r16          ; test one's complement
+00007c 3f0f                        cpi   r16, 0xff
+00007d f409                        brne  b17
+00007e c002                        rjmp rel7
+00007f 940e 014f                   b17: call TestError    ;
+000081 e406                        rel7: ldi   r16, 0x46
+000082 9500                        com   r16
+000083 3b09                        cpi   r16, 0xB9
+000084 f409                        brne  b18
+000085 c002                        rjmp test_neg
+000086 940e 014f                   b18: call TestError    ;
+                                 test_neg:
+000088 9501                        neg   r16          ; test two's complement
+000089 3407                        cpi   r16, 0x47
+00008a f409                        brne  b19
+00008b c002                        rjmp rel8
+00008c 940e 014f                   b19: call TestError    ;
+00008e e000                        rel8: ldi   r16, 0
+                                 test_sbr:
+00008f 6001                        sbr   r16, 1       ; test set first bit of r16
+000090 3001                        cpi   r16, 0x01
+000091 f409                        brne  b20
+000092 c002                        rjmp rel9
+000093 940e 014f                  b20: call TestError    ;
+000095 6800                        rel9: sbr   r16, 0x80       ; test set last bit of r16
+000096 3801                        cpi   r16, 0x81
+000097 f409                        brne  b21
+000098 c002                        rjmp test_cbr
+000099 940e 014f                   b21: call TestError    ;
+                                 test_cbr:
+00009b 7f0e                        cbr   r16, 1       ; test clear last bit of r16
+00009c 3800                        cpi   r16, 0x80
+00009d 770f                        cbr   r16, 0x80       ; test clear first bit of r16
+00009e f409                        brne  b22
+00009f c002                        rjmp test_inc
+0000a0 940e 014f                   b22: call TestError    ;
+                                 test_inc:
+0000a2 e000                        ldi   r16, 0
+0000a3 9503                        inc   r16          ; test increment
+0000a4 3001                        cpi   r16, 1
+0000a5 f409                        brne  b23
+0000a6 c002                        rjmp test_dec
+0000a7 940e 014f                   b23: call TestError    ;
+                                 test_dec:
+0000a9 950a                        dec   r16          ; test decrement
+0000aa f409                        brne  b24
+0000ab c002                        rjmp test_tst
+0000ac 940e 014f                   b24: call TestError    ;
+                                 test_tst:
+0000ae 2300                        tst   r16      ; test tst
+0000af f409                        brne  b25
+0000b0 c002                        rjmp test_clr
+0000b1 940e 014f                  b25: call TestError    ;
+                                 test_clr:
+0000b3 2700                        clr   r16          ; test set r16 to 0x00
+0000b4 f409                        brne  b27
+0000b5 c002                        rjmp test_ser
+0000b6 940e 014f                   b27: call TestError    ;
+                                 test_ser:
+0000b8 ef0f                        ser   r16          ; test set r16 to 0xff
+0000b9 3f0f                        cpi   r16, 0xff
+0000ba f409                        brne b28
+0000bb c002                        rjmp rel10
+0000bc 940e 014f                   b28: call TestError    ;
+0000be e203                        rel10: ldi   r16, 0x23    ; Test data transfer instructions
+                                 test_sts_lds:
+0000bf 9300 0021                   sts   0x0021, r16  ;W 0x23 0x0021 test store and load direct
+0000c1 9100 0021                   lds   r16, 0x0021  ;R 0x21 0x0021
+0000c3 e4a3                        ldi   r26, 0x43
+0000c4 e0b2                        ldi   r27, 0x02
+0000c5 930c                        st    X, r16       ;W 0x23 0x0243 test store and load indirect
+0000c6 910c                        ld    r16, X       ;R 0x23 0x0243
+0000c7 e4c3                        ldi   r28, 0x43
+0000c8 e0d2                        ldi   r29, 0x02
+0000c9 8308                        st    Y, r16       ;W 0x23 0x0243
+0000ca 8108                        ld    r16, Y       ;R 0x23 0x0243
+0000cb e4e3                        ldi   r30, 0x43
+0000cc e0f2                        ldi   r31, 0x02
+0000cd 8300                        st   Z, r16       ;W 0x23 0x0243
+0000ce 8100                        ld    r16, Z       ;R 0x23 0x0243
+0000cf e209                        ldi   r16, 0x29
+                                 test_std_ldd:
+0000d0 830d                        std   Y+5, r16     ;W 0x29 0x0248 test store and load indirect with displacement
+0000d1 2700                        clr   r16
+0000d2 810d                        ldd   r16, Y+5     ;R 0x29 0x0248
+0000d3 9309                        st    Y+, r16      ;W 0x29 0x0243
+0000d4 9309                        st    Y+, r16      ;W 0x29 0x0244
+0000d5 910a                        ld    r16, -Y      ;R 0x29 0x0243
+0000d6 e514                        ldi   r17, 0x54
+0000d7 2f01                        mov   r16, r17     ; test mov
+0000d8 3504                        cpi   r16, 0x54
+0000d9 f409                        brne  b29
+0000da c002                        rjmp rel11
+0000db 940e 014f                   b29: call TestError    ;
+0000dd e302                        rel11: ldi   r16, 0x32    ; test load immediate
+0000de 3302                        cpi   r16, 0x32
+0000df e5aa                        ldi   r26, 0x5a   ; test move word (X = 0x865a)
+0000e0 e8b6                        ldi   r27, 0x86
+                                 test_movw:
+0000e1 01ed                        movw  Y, X        ; Y = X = 0x8651
+0000e2 35ca                        cpi   r28, 0x5a
+0000e3 f409                        brne  b30
+0000e4 c002                        rjmp rel12
+0000e5 940e 014f                   b30: call TestError    ;
+0000e7 38d6                        rel12: cpi   r29, 0x86
+0000e8 f409                        brne  b31
+0000e9 c002                        rjmp test_rjmp
+0000ea 940e 014f                   b31: call TestError    ;
+                                 test_rjmp:
+0000ec c002                        rjmp rel13 		    ; testing relative jump
+0000ed 940e 014f                 	call TestError  ; should not execute
+0000ef 940c 00f3                 	rel13: JMP testJump	; jump to address in memory
+0000f1 940e 014f                 	call TestError  ; should skip over this
+                                 
+                                 testJump:
+0000f3 9478                      	SEI				; set the interrupt flag
+0000f4 f017                      	BRIE test_Int	; tests to see if the interrupt flag is set
+0000f5 940e 014f                 	call TestError  ; should not execute
+                                 
+                                 test_Int:
+0000f7 94f8                      	CLI				; clears the interrupt flag
+0000f8 f00f                      	BRIE b32			; tests to see if the branch instruction is working
+0000f9 f417                      	BRID testIClr	; tests to see if the interrupt flag is cleared
+0000fa 940e 014f                 	b32: call TestError  ; should not execute
+                                 
+                                 testIClr:
+0000fc 9408                      	SEC				; sets the carry flag
+0000fd f010                      	BRCS b33		; should not skip next line if carry is set
+0000fe 940e 014f                 	call TestError	;
+000100 f010                      	b33: BRCS testCSet	; tests to see if carry is set
+000101 940e 014f                 	call TestError  ; should not execute
+                                 
+                                 testCSet:
+000103 9488                      	CLC				; clears the carry flag
+000104 f008                      	BRCS b34			; tests the branch instruction is working
+000105 f410                      	BRCC testCClr	; tests to see if the carry flag is cleared
+000106 940e 014f                 	b34: call TestError  ; shoud not execute
+                                 
+                                 testCClr:
+000108 9428                      	SEN				; sets the negative flag
+000109 f012                      	BRMI b35			; should not skip next line if negative is set
+00010a 940e 014f                 	call TestError  ;
+00010c f012                      	b35: BRMI testNSet	; tests to see if negative is set
+00010d 940e 014f                 	call TestError  ; should not execute
+                                 
+                                 testNSet:
+00010f 94a8                      	CLN				; clears the negative flag
+000110 f00a                      	BRMI b36			; tests the branch instruction is working
+000111 f412                      	BRPL testNClr	; tests to see if the negative flag is cleared
+000112 940e 014f                 	b36: call TestError  ; shoud not execute
+                                 
+                                 testNClr:
+000114 9438                      	SEV				; sets the overflow flag
+000115 f013                      	BRVS b37			; should not skip next line if overflow is set
+000116 940e 014f                 	call TestError  ;
+000118 f013                      	b37: BRVS testVSet	; tests to see if overflow is set
+000119 940e 014f                 	call TestError  ; should not execute
+                                 
+                                 testVSet:
+00011b 94b8                      	CLV				; clears the overflow flag
+00011c f00b                      	BRVS b38			; tests the branch instruction is working
+00011d f413                      	BRVC testVClr	; tests to see if the overflow flag is cleared
+00011e 940e 014f                 	b38: call TestError  ; shoud not execute
+                                 
+                                 testVClr:
+000120 f00c                      	BRLT b39			; Tests lower than but should not execute
+000121 f414                      	BRGE testGE		; N flag is cleared so this tests greater than or equal
+000122 940e 014f                 	b39: call TestError  ; Should not execute
+                                 
+                                 testGE:
+000124 9438                      	SEV				; Set the overflow flag
+000125 9428                      	SEN				; Set the negative flag
+000126 9448                      	SES				; Set sign flag
+000127 f40c                      	BRGE b40			; Tests greater than or equal but should not execute
+000128 f014                      	BRLT testLT		; N flag is set so this tests lower than
+000129 940e 014f                 	b40: call TestError  ; Sould not execute
+                                 
+                                 testLT:
+00012b e002                        	LDI R16, 2  	; setup the registers to test for CPC
+00012c e011                        	LDI R17, 1
+00012d 9408                        	SEC				; set the carry flag
+00012e 0701                        	CPC R16, R17	; result should be 0 and set the zero flag
+00012f f409                        	BRNE b41			; tests if result is not equal but should jump
+000130 f011                        	BREQ testZset	; tests the brach if zero instruction
+000131 940e 014f                   	b41: call TestError  ; should not execute
+                                 
+                                 testZSet:
+000133 9498                      	CLZ				; clears the zero flag
+000134 f009                      	BREQ b42			; tests the brach if equal instruction
+000135 f411                      	BRNE testZClr	; tests the branch if not equal instruction
+000136 940e 014f                 	b42: call TestError  ; should not execute
+                                 
+                                 testZClr:
+000138 e802                      	LDI R16, 0x82	; load 0b10000010 into R16 register to test LSL
+000139 0f00                      	LSL R16			; this command should set the carry flag
+00013a f010                      	BRCS testLSLC	; should branch since carry should be set
+00013b 940e 014f                 	call TestError  				;should not be executed
+                                 
+                                 testLSLC:
+00013d 3004                      	CPI R16, 4		; this should test if the shift left actually worked
+00013e f011                      	BREQ LSLWorks	;
+00013f 940e 014f                 	call TestError  ; should not be executed
+                                 
+                                 LSLWorks:
+000141 9408                      	SEC				; sets the carry flag
+000142 1f00                      	ROL R16			; this should see if the rotate right thorugh carry works
+000143 3009                      	CPI R16, 9		; this sould be the result if the rotate worked
+000144 f011                      	BREQ ROLWorks	;
+000145 940e 014f                 	call TestError  ; Should not be executed
+                                 
+                                 ROLWorks:
+000147 e802                      	LDI	R16, 0x82	; setup with signed bit set
+000148 9505                      	ASR	R16			; sign bit should be set
+000149 3c01                      	CPI R16, 0xC1	; check to see if only the right 7 bits shifted
+00014a f011                      	BREQ ASRWorks	;
+00014b 940e 014f                 	call TestError  ; should not be executed
+                                 
+                                 ASRWorks:
+00014d 940e 0150                 	call TestGood   ; end of test
+                                 
+                                 TestError:
+00014f cfff                        rjmp TestError   ;
+                                 TestGood:
+000150 cfff                        rjmp TestGood    ;
